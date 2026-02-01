@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { sanityClientServer } from '@/lib/sanity';
 
-
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
@@ -45,11 +44,11 @@ export async function POST(request) {
 
         const platosNormalizados = platosOrdenados.map(p => {
             const cantidad = Number(p.cantidad) || 1;
-            const precio = Number(p.precioUnitario || p.precioNum) || 0; // ✅ Soporte para ambos nombres de propiedad
+            const precio = Number(p.precioUnitario || p.precioNum) || 0; 
 
             return {
-                _key: p._key || p.lineId || Math.random().toString(36).substring(2, 9), // Generador de llave seguro si no existe
-                nombrePlato: p.nombrePlato || p.nombre, // ✅ Mapeo de nombre
+                _key: p._key || p.lineId || Math.random().toString(36).substring(2, 9), 
+                nombrePlato: p.nombrePlato || p.nombre, 
                 cantidad,
                 precioUnitario: precio,
                 subtotal: precio * cantidad,
@@ -57,27 +56,7 @@ export async function POST(request) {
             };
         });
 
-        // ACTUALIZAR EXISTENTE
-        if (ordenId) {
-            const updated = await sanityClientServer
-                .patch(ordenId)
-                .set({
-                    mesa,
-                    mesero,
-                    platosOrdenados: platosNormalizados,
-                    fechaCreacion: new Date().toISOString()
-                })
-                .commit();
-
-            return NextResponse.json({
-                message: 'Orden actualizada correctamente',
-                ordenId: updated._id,
-                mesa: updated.mesa,
-                mesero: updated.mesero
-            });
-        }
-
-        // CREAR NUEVA
+        // OBJETO BASE PARA CREACIÓN (Se usa como fallback si el patch falla)
         const nuevaOrden = {
             _type: 'ordenActiva',
             mesa,
@@ -86,6 +65,33 @@ export async function POST(request) {
             platosOrdenados: platosNormalizados
         };
 
+        // --- LÓGICA DE ACTUALIZACIÓN CON FALLBACK ---
+        if (ordenId) {
+            try {
+                const updated = await sanityClientServer
+                    .patch(ordenId)
+                    .set({
+                        mesa,
+                        mesero,
+                        platosOrdenados: platosNormalizados,
+                        ultimaActualizacion: new Date().toISOString()
+                    })
+                    .commit();
+
+                return NextResponse.json({
+                    message: 'Orden actualizada correctamente',
+                    ordenId: updated._id,
+                    mesa: updated.mesa,
+                    mesero: updated.mesero
+                });
+            } catch (patchError) {
+                // Si el ID no existe o fue borrado, no lanzamos 500. 
+                // Simplemente ignoramos el error y dejamos que el código siga para crear una nueva.
+                console.warn('⚠️ ID de orden no encontrado para patch, procediendo a crear nueva.');
+            }
+        }
+
+        // --- CREAR NUEVA (Si no hay ordenId o si el patch falló) ---
         const created = await sanityClientServer.create(nuevaOrden);
 
         return NextResponse.json(
@@ -99,9 +105,9 @@ export async function POST(request) {
         );
 
     } catch (error) {
-        console.error('[API_LIST_POST_ERROR]:', error);
+        console.error('🔥 [API_LIST_POST_ERROR]:', error);
         return NextResponse.json(
-            { error: 'Error al procesar orden en Sanity' },
+            { error: 'Error al procesar orden en Sanity', details: error.message },
             { status: 500 }
         );
     }
