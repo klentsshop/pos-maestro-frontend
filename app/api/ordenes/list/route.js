@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { sanityClientServer } from '@/lib/sanity';
-import { crypto } from 'crypto'; // Aseguramos disponibilidad de randomUUID
+
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -48,7 +48,7 @@ export async function POST(request) {
             const precio = Number(p.precioUnitario || p.precioNum) || 0; // ✅ Soporte para ambos nombres de propiedad
 
             return {
-                _key: p._key || Math.random().toString(36).substring(2, 9), // Generador de llave seguro si no existe
+                _key: p._key || p.lineId || Math.random().toString(36).substring(2, 9), // Generador de llave seguro si no existe
                 nombrePlato: p.nombrePlato || p.nombre, // ✅ Mapeo de nombre
                 cantidad,
                 precioUnitario: precio,
