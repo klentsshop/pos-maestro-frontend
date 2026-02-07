@@ -43,6 +43,7 @@ export default function MenuPanel() {
     const [mostrarCategoriasMobile, setMostrarCategoriasMobile] = useState(false);
     const [mostrarCarritoMobile, setMostrarCarritoMobile] = useState(false);
     const [listaMeseros, setListaMeseros] = useState([]);
+    const [busqueda, setBusqueda] = useState(''); // 🔍 Nuevo estado para el buscador
 
     const rep = useReportes(getFechaBogota);
     const imp = useImpresion(cart); 
@@ -88,6 +89,14 @@ export default function MenuPanel() {
         fetchData();
     }, []);
 
+    const platosFiltradosFinal = platos.filter(p => {
+    const nombre = p.nombrePlato || p.nombre || "";
+    const cumpleBusqueda = nombre.toLowerCase().includes(busqueda.toLowerCase());
+    const cumpleCategoria = categoriaActiva === 'todos' || p.categoria === categoriaActiva;
+    
+    return cumpleBusqueda && cumpleCategoria;
+});
+
     return (
         <div className={styles.mainWrapper}>
             <div className={styles.posLayout}>
@@ -108,11 +117,16 @@ export default function MenuPanel() {
                 />
 
                 <ProductGrid 
-                    platos={platos} platosFiltrados={categoriaActiva === 'todos' ? platos : platos.filter(p => p.categoria === categoriaActiva)}
+                    platos={platos} 
+                    platosFiltrados={platosFiltradosFinal} // ✅ Usamos la nueva lógica filtrada
+                    busqueda={busqueda}                   // ✅ Pasamos el texto
+                    setBusqueda={setBusqueda}
                     categoriaActiva={categoriaActiva} setCategoriaActiva={setCategoriaActiva}
                     mostrarCategoriasMobile={mostrarCategoriasMobile} setMostrarCategoriasMobile={setMostrarCategoriasMobile}
                     agregarAlCarrito={agregarAlCarrito} styles={styles}
                     mostrarCarritoMobile={mostrarCarritoMobile} setMostrarCarritoMobile={setMostrarCarritoMobile}
+                    cart={cart}   // 👈 AGREGA ESTA LÍNEA
+                    total={total}
                 />
 
                 <PrintTemplates 

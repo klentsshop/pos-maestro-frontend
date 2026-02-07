@@ -5,9 +5,9 @@ import { urlFor } from '@/lib/sanity';
 import { SITE_CONFIG } from '@/lib/config';
 
 export default function ProductGrid({
-    platos, platosFiltrados, categoriaActiva, setCategoriaActiva,
+    platos, platosFiltrados, busqueda, setBusqueda, categoriaActiva, setCategoriaActiva,
     mostrarCategoriasMobile, setMostrarCategoriasMobile, agregarAlCarrito, 
-    styles, mostrarCarritoMobile, setMostrarCarritoMobile 
+    styles, mostrarCarritoMobile, setMostrarCarritoMobile, cart, total 
 }) {
     const listaCategorias = ['todos', ...new Set(platos.map(p => p.categoria))];
 
@@ -15,7 +15,7 @@ export default function ProductGrid({
         <div className={styles.menuPanel}>
             {/* BOTONES DE NAVEGACIÓN SUPERIOR (MÓVIL) */}
             {!mostrarCarritoMobile && (
-                <>
+                <div className={styles.mobileSearchHeader}>
                     {/* CARRITO A LA IZQUIERDA */}
                     <button 
                         className={styles.mobileOrderBtn} 
@@ -26,6 +26,20 @@ export default function ProductGrid({
                     >
                         🛒
                     </button>
+                    
+                    {/* 🔍 BUSCADOR ESTILO GOOGLE (CENTRO) */}
+                    <div className={styles.searchContainer}>
+                        <input 
+                            type="text" 
+                            placeholder="Buscar plato..." 
+                            value={busqueda}
+                            onChange={(e) => setBusqueda(e.target.value)}
+                            className={styles.searchInput}
+                        />
+                        {busqueda && (
+                            <button onClick={() => setBusqueda('')} className={styles.clearBtn}>✕</button>
+                        )}
+                    </div>
 
                     {/* HAMBURGUESA / X A LA DERECHA */}
                     <button 
@@ -37,9 +51,8 @@ export default function ProductGrid({
                     >
                         {mostrarCategoriasMobile ? '✕' : '☰'}
                     </button>
-                </>
+                </div>
             )}
-
             {/* Menú lateral de categorías */}
             <div className={`${styles.categoriesBar} ${mostrarCategoriasMobile ? styles.categoriesBarShowMobile : ''}`}>
                 <h3 className={styles.mobileOnlyTitle}>Categorías</h3>
@@ -82,6 +95,26 @@ export default function ProductGrid({
                     </div>
                 ))}
             </div>
+            {/* BARRA FLOTANTE TIPO RAPPI */}
+            {cart && cart.length > 0 && !mostrarCarritoMobile && (
+                <div 
+                    className={styles.rappiCartBtn} 
+                    onClick={() => setMostrarCarritoMobile(true)}
+                >
+                    <div className={styles.rappiCount}>
+                        {/* Protección extra: usamos (item.quantity || 1) por si viene vacío */}
+                        {cart.reduce((acc, item) => acc + (Number(item.quantity) || 1), 0)} 
+                        {' '}
+                        {cart.length === 1 && cart[0].quantity === 1 ? 'Producto' : 'Productos'}
+                    </div>
+                    
+                    <div className={styles.rappiText}>Ver pedido</div>
+                    
+                    <div className={styles.rappiTotal}>
+                        {SITE_CONFIG.brand.symbol}{Number(total || 0).toLocaleString()}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -272,3 +272,120 @@
         box-shadow: 0 5px 20px rgba(16, 185, 129, 0.4);
     }
 }
+/* ==========================================================================
+   INTEGRACIÓN DEL BUSCADOR (MARCA BLANCA - ESTILO GOOGLE)
+   ========================================================================== */
+
+/* Contenedor que agrupa Carrito - Buscador - Hamburguesa */
+.mobileSearchHeader {
+    display: none; /* Se oculta en escritorio */
+}
+
+@media (max-width: 768px) {
+    .mobileSearchHeader {
+        display: flex !important;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 15px;
+        width: 100%;
+        background-color: white;
+        border-bottom: 1px solid #eee;
+        position: sticky;
+        top: 0;
+        z-index: 4600; /* Por encima de los botones flotantes pero debajo de modales */
+    }
+
+    /* Sobrescribimos los botones flotantes originales para que encajen en el header */
+    .mobileOrderBtn, .mobileCatBtn {
+        position: static !important; /* Quita el 'fixed' y lo deja en la línea del header */
+        margin: 0 !important;
+        flex-shrink: 0;
+        width: 42px !important;
+        height: 42px !important;
+        box-shadow: none !important; /* Limpiamos sombras para que se vea plano y moderno */
+    }
+
+    .searchContainer {
+        flex: 1;
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .searchInput {
+        width: 100%;
+        padding: 10px 15px;
+        border-radius: 25px; /* Bordes redondeados tipo Google */
+        border: 1px solid #dfe1e5;
+        font-size: 15px;
+        outline: none;
+        transition: all 0.3s ease;
+        background-color: #f8f9fa;
+    }
+
+    .searchInput:focus {
+        border-color: #10B981; /* Verde esmeralda de tu marca */
+        background-color: #fff;
+        box-shadow: 0 1px 6px rgba(32,33,36,.28);
+    }
+
+    .clearBtn {
+        position: absolute;
+        right: 12px;
+        background: none;
+        border: none;
+        color: #999;
+        font-size: 1.2rem;
+        cursor: pointer;
+        line-height: 1;
+    }
+
+    /* ==========================================================================
+       BARRA FLOTANTE TIPO RAPPI (FEEDBACK VISUAL)
+       ========================================================================== */
+    .rappiCartBtn {
+        display: flex !important; /* Forzamos que aparezca en móvil */
+        position: fixed;
+        bottom: 25px; 
+        left: 5%;
+        width: 90%;
+        background: #10B981; /* El verde de Chicharrón al Fogón */
+        color: white;
+        padding: 16px 22px;
+        border-radius: 18px;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 4500;
+        box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+        
+        /* Efecto de entrada suave */
+        animation: slideUpRappi 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        cursor: pointer;
+    }
+
+    .rappiCount {
+        background: rgba(0, 0, 0, 0.2);
+        padding: 5px 12px;
+        border-radius: 10px;
+        font-weight: 900;
+        font-size: 0.85rem;
+    }
+
+    .rappiText {
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.9rem;
+    }
+
+    .rappiTotal {
+        font-weight: 900;
+        font-size: 1.1rem;
+    }
+
+    /* Animación: la barra sube desde abajo */
+    @keyframes slideUpRappi {
+        from { transform: translateY(100px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+}
