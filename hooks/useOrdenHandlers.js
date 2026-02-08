@@ -72,7 +72,7 @@ export function useOrdenHandlers({
     
     // Guardamos copia del carrito antes de cualquier limpieza
     const platosParaGuardar = cart.map(i => ({ 
-        _key: i.lineId, 
+        _key: i._key || i.lineId || Math.random().toString(36).substring(2, 9), 
         nombrePlato: i.nombre, 
         cantidad: i.cantidad, 
         precioUnitario: i.precioNum, 
