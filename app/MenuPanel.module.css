@@ -388,4 +388,72 @@
         from { transform: translateY(100px); opacity: 0; }
         to { transform: translateY(0); opacity: 1; }
     }
+    /* Contenedor principal de la barra cuando solo hay mesas */
+.barraMesasActivas {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 70px;
+    background-color: #ffffff;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    padding: 0 15px;
+    z-index: 999;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+}
+
+.contenedorMesasRapidas {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 5px;
+}
+
+.etiquetaMesas {
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: #1f2937;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+/* El truco del scroll horizontal */
+.scrollMesas {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 5px;
+    /* Ocultar barra de scroll en móviles */
+    scrollbar-width: none; 
+}
+
+.scrollMesas::-webkit-scrollbar {
+    display: none;
+}
+
+/* Estilo de los botones de mesa */
+.botonMesaRapida {
+    background-color: #f3f4f6;
+    border: 1.5px solid #10B981;
+    color: #065f46;
+    padding: 6px 16px;
+    border-radius: 50px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+
+.botonMesaRapida:active {
+    transform: scale(0.95);
+    background-color: #10B981;
+    color: white;
+}
+
+/* 🚨 IMPORTANTE: Espacio extra al final de la lista de platos */
+.productsGrid {
+    padding-bottom: 100px; /* Para que la barra no tape el último chicharrón */
+}
 }

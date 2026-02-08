@@ -7,7 +7,7 @@ import { SITE_CONFIG } from '@/lib/config';
 export default function ProductGrid({
     platos, platosFiltrados, busqueda, setBusqueda, categoriaActiva, setCategoriaActiva,
     mostrarCategoriasMobile, setMostrarCategoriasMobile, agregarAlCarrito, 
-    styles, mostrarCarritoMobile, setMostrarCarritoMobile, cart, total 
+    styles, mostrarCarritoMobile, setMostrarCarritoMobile, cart, total, mensajeExito, ordenesActivas, cargarOrden, ordenActivaId
 }) {
     const listaCategorias = ['todos', ...new Set(platos.map(p => p.categoria))];
 
@@ -53,6 +53,7 @@ export default function ProductGrid({
                     </button>
                 </div>
             )}
+
             {/* Menú lateral de categorías */}
             <div className={`${styles.categoriesBar} ${mostrarCategoriasMobile ? styles.categoriesBarShowMobile : ''}`}>
                 <h3 className={styles.mobileOnlyTitle}>Categorías</h3>
@@ -73,7 +74,7 @@ export default function ProductGrid({
             <div className={styles.productsGrid}>
                 {platosFiltrados.map(plato => (
                     <div key={plato._id} className={styles.productCard} onClick={() => agregarAlCarrito(plato)}>
-                        {/* 1. Área de Imagen: Sin sombras que opaquen la comida */}
+                        {/* 1. Área de Imagen */}
                         <div 
                             className={styles.cardImage} 
                             style={{ 
@@ -84,35 +85,67 @@ export default function ProductGrid({
                             }}
                         />
                         
-                        {/* 2. Área de Información: Texto claro sobre fondo blanco */}
+                        {/* 2. Área de Información */}
                         <div className={styles.cardInfo}>
                             <div className={styles.cardTitle}>{plato.nombre}</div>
                             <div className={styles.cardPrice}>
-                                {/* ✅ Ahora la moneda es dinámica según SITE_CONFIG */}
                                 {SITE_CONFIG.brand.symbol}{formatPrecioDisplay(plato.precio).toLocaleString(SITE_CONFIG.brand.currency)}
                             </div>
                         </div>
                     </div>
                 ))}
             </div>
-            {/* BARRA FLOTANTE TIPO RAPPI */}
-            {cart && cart.length > 0 && !mostrarCarritoMobile && (
+
+            {/* BARRA INFERIOR DINÁMICA: ÉXITO > CARRITO > NAVEGACIÓN DE MESAS */}
+            {(mensajeExito || (cart && cart.length > 0) || (ordenesActivas && ordenesActivas.length > 0)) && !mostrarCarritoMobile && (
                 <div 
-                    className={styles.rappiCartBtn} 
-                    onClick={() => setMostrarCarritoMobile(true)}
+                    className={mensajeExito || cart.length > 0 ? styles.rappiCartBtn : styles.barraMesasActivas} 
+                    style={{ 
+                        backgroundColor: mensajeExito ? '#059669' : (cart.length > 0 ? '#10B981' : '#f8f9fa'),
+                        borderTop: cart.length === 0 ? '1px solid #dee2e6' : 'none'
+                    }}
+                    onClick={() => {
+                        if (!mensajeExito && cart.length > 0) setMostrarCarritoMobile(true);
+                    }}
                 >
-                    <div className={styles.rappiCount}>
-                        {/* Protección extra: usamos (item.quantity || 1) por si viene vacío */}
-                        {cart.reduce((acc, item) => acc + (Number(item.quantity) || 1), 0)} 
-                        {' '}
-                        {cart.length === 1 && cart[0].quantity === 1 ? 'Producto' : 'Productos'}
-                    </div>
-                    
-                    <div className={styles.rappiText}>Ver pedido</div>
-                    
-                    <div className={styles.rappiTotal}>
-                        {SITE_CONFIG.brand.symbol}{Number(total || 0).toLocaleString()}
-                    </div>
+                    {mensajeExito ? (
+                        /* MODO 1: CONFIRMACIÓN DE ÉXITO */
+                        <>
+                            <div className={styles.rappiCount}>✓</div>
+                            <div className={styles.rappiText}>¡ORDEN GUARDADA EXITOSAMENTE!</div>
+                        </>
+                    ) : cart.length > 0 ? (
+                        /* MODO 2: CARRITO ACTIVO */
+                        <>
+                            <div className={styles.rappiCount}>
+                                {cart.reduce((acc, item) => acc + (Number(item.quantity) || 1), 0)} 
+                                {' '}
+                                {cart.length === 1 && cart[0].quantity === 1 ? 'Producto' : 'Productos'}
+                            </div>
+                            <div className={styles.rappiText}>Ver pedido</div>
+                            {!mensajeExito && (
+                                <div className={styles.rappiTotal}>
+                                    {SITE_CONFIG.brand.symbol}{Number(total || 0).toLocaleString()}
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        /* MODO 3: NAVEGACIÓN RÁPIDA DE MESAS */
+                        <div className={styles.contenedorMesasRapidas}>
+                       <span className={styles.etiquetaMesas}>MESAS ACTIVAS:</span>
+                       <div className={styles.scrollMesas}>
+                        {ordenesActivas && ordenesActivas.map((o) => (
+                        <button 
+                        key={o._id} 
+                        className={`${styles.botonMesaRapida} ${ordenActivaId === o._id ? styles.tableBtnActive : ''}`} 
+                         onClick={() => cargarOrden(o._id)} // 👈 Lógica idéntica a la de escritorio
+                        >
+                        {o.mesa}
+                        </button>
+                      ))}
+                        </div>
+                        </div>
+                   )}
                 </div>
             )}
         </div>

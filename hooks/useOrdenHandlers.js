@@ -13,6 +13,7 @@ export function useOrdenHandlers({
 }) {
     const [ordenActivaId, setOrdenActivaId] = useState(null);
     const [ordenMesa, setOrdenMesa] = useState(null);
+    const [mensajeExito, setMensajeExito] = useState(false);
 
     const cargarOrden = async (id) => {
         try {
@@ -35,56 +36,90 @@ export function useOrdenHandlers({
         return false;
     };
 
-    const guardarOrden = async () => {
-        if (cart.length === 0) return;
+   const guardarOrden = async () => {
+    // 1. Validaciones iniciales críticas (Sin cambios)
+    if (cart.length === 0) return;
 
-        let mesaDefault = esModoCajero ? "Mostrador" : "Mesa 1";
-        let mesa = ordenMesa || prompt("Mesa o Cliente:", mesaDefault);
-        if (!mesa) return;
+    let mesaDefault = esModoCajero ? "Mostrador" : "Mesa 1";
+    let mesa = ordenMesa || prompt("Mesa o Cliente:", mesaDefault);
+    if (!mesa) return;
 
-        if (!ordenActivaId) {
-            const existe = ordenesActivas.find(
-                (o) => o.mesa.toLowerCase() === mesa.toLowerCase()
-            );
-            if (existe && confirm(`La [${mesa}] tiene orden activa. ¿Cargarla?`)) { 
+    // 2. 🛡️ Validación de Duplicados (Protección de Integridad)
+    if (!ordenActivaId) {
+        const existe = ordenesActivas.find(
+            (o) => o.mesa.toLowerCase() === mesa.toLowerCase()
+        );
+
+        if (existe) {
+            const deseaCargar = confirm(`La [${mesa}] tiene orden activa. ¿Cargarla?`);
+            if (deseaCargar) {
                 cargarOrden(existe._id); 
+                return; 
+            } else {
+                alert("Operación cancelada. No se puede crear otra orden con el mismo nombre.");
                 return; 
             }
         }
+    }
 
-        let meseroFinal = nombreMesero || (esModoCajero ? "Caja" : null);
-        if (!meseroFinal) return alert("⚠️ Seleccione mesero antes de guardar.");
+    // 3. 👤 Manejo de Mesero y Persistencia (Sin cambios)
+    let meseroFinal = nombreMesero || localStorage.getItem('ultimoMesero') || (esModoCajero ? "Caja" : null);
+    if (!meseroFinal) return alert("⚠️ Seleccione mesero antes de guardar.");
 
-        try {
-            await apiGuardar({ 
-                mesa, 
-                mesero: meseroFinal, 
-                ordenId: ordenActivaId, 
-                platosOrdenados: cart.map(i => ({ 
-                    _key: i.lineId, 
-                    nombrePlato: i.nombre, 
-                    cantidad: i.cantidad, 
-                    precioUnitario: i.precioNum, 
-                    subtotal: i.precioNum * i.cantidad,
-                    comentario: i.comentario || "" 
-                })) 
-            });
+    localStorage.setItem('ultimoMesero', meseroFinal);
 
-            await refreshOrdenes(); 
-            alert(`✅ Orden guardada.`);
+    // --- ⚡ ESTRATEGIA DE VELOCIDAD CON FEEDBACK EN BARRA ---
+    
+    // Guardamos copia del carrito antes de cualquier limpieza
+    const platosParaGuardar = cart.map(i => ({ 
+        _key: i.lineId, 
+        nombrePlato: i.nombre, 
+        cantidad: i.cantidad, 
+        precioUnitario: i.precioNum, 
+        subtotal: i.precioNum * i.cantidad,
+        comentario: i.comentario || "" 
+    }));
 
+    const currentOrdenId = ordenActivaId;
+
+    try {
+        // A. Activamos el mensaje de éxito en la barra ANTES de limpiar el carrito
+        if (typeof setMensajeExito === 'function') setMensajeExito(true);
+        
+        // B. Cerramos el panel del carrito para que el mesero vea el menú
+        setMostrarCarritoMobile(false);
+
+        // C. Ejecutamos el guardado en segundo plano
+        await apiGuardar({ 
+            mesa, 
+            mesero: meseroFinal, 
+            ordenId: currentOrdenId, 
+            platosOrdenados: platosParaGuardar 
+        });
+
+        // D. Refrescamos mesas silenciosamente
+        await refreshOrdenes();
+
+        // E. ⏳ TEMPORIZADOR DE 2 SEGUNDOS:
+        // Mantener el carrito lleno 2 seg permite que la barra de Rappi 
+        // muestre el mensaje de éxito antes de desaparecer.
+        setTimeout(() => {
+            if (typeof setMensajeExito === 'function') setMensajeExito(false);
             setOrdenActivaId(null); 
             setOrdenMesa(null); 
-            clearCart(); 
+            clearCart(); // Aquí es donde la barra finalmente se oculta
+            if (meseroFinal) setNombreMesero(meseroFinal);
+        }, 2000);
 
-            if (!esModoCajero) setNombreMesero(null);
-            setMostrarCarritoMobile(false);
+        console.log(`✅ Orden ${mesa} guardada exitosamente.`);
 
-        } catch (e) { 
-            alert("❌ Error al guardar."); 
-        }
-    };
-
+    } catch (e) { 
+        // Si falla, apagamos el mensaje de éxito y avisamos
+        if (typeof setMensajeExito === 'function') setMensajeExito(false);
+        console.error("Error en Sanity:", e);
+        alert("❌ Error crítico: La orden no se guardó. Revisa tu conexión a internet."); 
+    }
+   };
     const cobrarOrden = async (metodoPago) => {
     if (cart.length === 0 || !esModoCajero) return;
     if (!confirm(`💰 ¿Cobrar $${total.toLocaleString('es-CO')}?`)) return;
@@ -234,6 +269,10 @@ export function useOrdenHandlers({
         guardarOrden, 
         cobrarOrden, 
          imprimirClienteManual,
-        cancelarOrden 
+        cancelarOrden,
+        mensajeExito,  
+        setMensajeExito,
+        setOrdenActivaId, 
+        setOrdenMesa
     };
 }

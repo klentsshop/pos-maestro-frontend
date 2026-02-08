@@ -97,6 +97,12 @@ export default function MenuPanel() {
     return cumpleBusqueda && cumpleCategoria;
 });
 
+// Función para limpiar platos y soltar la mesa (quita el modo "Actualizar")
+    const manejarLimpiezaTotal = () => {
+        clearCart();           // Borra los platos
+        ord.setOrdenActivaId(null); // Suelta el ID de la mesa
+        ord.setOrdenMesa(null);     // Borra el nombre de la mesa
+    };
     return (
         <div className={styles.mainWrapper}>
             <div className={styles.posLayout}>
@@ -111,7 +117,7 @@ export default function MenuPanel() {
                     listaMeseros={listaMeseros} esModoCajero={acc.esModoCajero}
                     ordenActivaId={ord.ordenActivaId} numOrdenesActivas={ordenesActivas.length} 
                     cleanPrice={cleanPrice} styles={styles} cancelarOrden={ord.cancelarOrden} 
-                    clearCart={clearCart} imprimirTicket={imp.imprimirCliente} 
+                   clearCart={manejarLimpiezaTotal} imprimirTicket={imp.imprimirCliente} 
                     actualizarComentario={actualizarComentario} imprimirComandaCocina={imp.imprimirCocina}
                     propina={propina} setPropina={setPropina} montoManual={montoManual} setMontoManual={setMontoManual}
                 />
@@ -127,6 +133,10 @@ export default function MenuPanel() {
                     mostrarCarritoMobile={mostrarCarritoMobile} setMostrarCarritoMobile={setMostrarCarritoMobile}
                     cart={cart}   // 👈 AGREGA ESTA LÍNEA
                     total={total}
+                    ordenesActivas={ordenesActivas} 
+                    cargarOrden={ord.cargarOrden}
+                    clearCart={manejarLimpiezaTotal}
+                    mensajeExito={ord.mensajeExito}
                 />
 
                 <PrintTemplates 
