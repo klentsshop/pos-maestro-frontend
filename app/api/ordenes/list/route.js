@@ -6,7 +6,7 @@ export const revalidate = 0;
 
 /**
  * LISTAR ÓRDENES ACTIVAS
- * Modificado para traer los platos y que el cajero vea el contenido
+ * Mantenemos la lógica intacta para que el cajero vea los platos.
  */
 export async function GET() {
     try {
@@ -15,11 +15,12 @@ export async function GET() {
             mesa,
             mesero,
             fechaCreacion,
-            platosOrdenados // ✅ CRÍTICO: Si no traemos esto, el cajero ve la mesa pero no los platos
+            platosOrdenados,
+            imprimirSolicitada,
+            imprimirCliente
         }`;
 
         const data = await sanityClientServer.fetch(query);
-        
         return NextResponse.json(data || []); 
     } catch (error) {
         console.error('[API_LIST_GET_ERROR]:', error);
@@ -29,11 +30,13 @@ export async function GET() {
 
 /**
  * CREAR O ACTUALIZAR ORDEN
+ * Integración total con la lógica de impresión para la APK.
  */
 export async function POST(request) {
     try {
         const body = await request.json();
-        const { mesa, mesero, platosOrdenados, ordenId } = body;
+        // 1. Extraemos los nuevos campos (imprimirSolicitada, imprimirCliente)
+        const { mesa, mesero, platosOrdenados, ordenId, imprimirSolicitada, imprimirCliente } = body;
 
         if (!mesa || !Array.isArray(platosOrdenados) || platosOrdenados.length === 0) {
             return NextResponse.json(
@@ -56,16 +59,21 @@ export async function POST(request) {
             };
         });
 
-        // OBJETO BASE PARA CREACIÓN (Se usa como fallback si el patch falla)
+        const fechaActual = new Date().toISOString();
+
+        // OBJETO BASE PARA CREACIÓN (Incluye flags de impresión)
         const nuevaOrden = {
             _type: 'ordenActiva',
             mesa,
             mesero,
-            fechaCreacion: new Date().toISOString(),
-            platosOrdenados: platosNormalizados
+            fechaCreacion: fechaActual,
+            ultimaActualizacion: fechaActual,
+            platosOrdenados: platosNormalizados,
+            imprimirSolicitada: imprimirSolicitada ?? false,
+            imprimirCliente: imprimirCliente ?? false
         };
 
-        // --- LÓGICA DE ACTUALIZACIÓN CON FALLBACK ---
+        // --- LÓGICA DE ACTUALIZACIÓN CON PATCH ---
         if (ordenId) {
             try {
                 const updated = await sanityClientServer
@@ -74,7 +82,10 @@ export async function POST(request) {
                         mesa,
                         mesero,
                         platosOrdenados: platosNormalizados,
-                        ultimaActualizacion: new Date().toISOString()
+                        ultimaActualizacion: fechaActual,
+                        // ✅ DISPARADORES APK: Ahora sí viajan a Sanity
+                        imprimirSolicitada: imprimirSolicitada ?? false,
+                        imprimirCliente: imprimirCliente ?? false
                     })
                     .commit();
 
@@ -85,13 +96,11 @@ export async function POST(request) {
                     mesero: updated.mesero
                 });
             } catch (patchError) {
-                // Si el ID no existe o fue borrado, no lanzamos 500. 
-                // Simplemente ignoramos el error y dejamos que el código siga para crear una nueva.
                 console.warn('⚠️ ID de orden no encontrado para patch, procediendo a crear nueva.');
             }
         }
 
-        // --- CREAR NUEVA (Si no hay ordenId o si el patch falló) ---
+        // --- CREAR NUEVA ---
         const created = await sanityClientServer.create(nuevaOrden);
 
         return NextResponse.json(

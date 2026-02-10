@@ -1,4 +1,3 @@
-// Archivo: app/hooks/useOrdenes.js
 import useSWR from 'swr';
 import { useState } from 'react';
 
@@ -9,7 +8,6 @@ const fetcher = (url) => fetch(url).then((res) => {
 
 export function useOrdenes() {
     // ✅ Sincronización Real-Time: SWR consulta al servidor cada 5 segundos.
-    // Esto es lo que permite que el Cajero vea lo que el Mesero guarda.
     const { data: ordenes = [], mutate, error } = useSWR('/api/ordenes/list', fetcher, {
         refreshInterval: 5000, 
         revalidateOnFocus: true,
@@ -22,10 +20,15 @@ export function useOrdenes() {
     const guardarOrden = async (ordenPayload) => {
         setCargandoAccion(true);
         try {
-            // Aseguramos que la orden viaje con estado 'abierta' si es nueva
+            // 🧠 INTEGRACIÓN SENIOR: Mantenemos el spread de ordenPayload para no perder nada,
+            // pero aseguramos que los disparadores de impresión viajen al servidor.
             const payload = {
                 ...ordenPayload,
-                estado: ordenPayload.estado || 'abierta'
+                estado: ordenPayload.estado || 'abierta',
+                // ✅ Leemos los flags que vienen del hook useOrdenHandlers
+                imprimirSolicitada: ordenPayload.imprimirSolicitada ?? false,
+                imprimirCliente: ordenPayload.imprimirCliente ?? false,
+                ultimaActualizacion: new Date().toISOString()
             };
 
             const res = await fetch('/api/ordenes/list', {
@@ -38,8 +41,7 @@ export function useOrdenes() {
             
             const data = await res.json();
             
-            // ✅ Optimistic UI: Mutate le avisa a todos los dispositivos 
-            // que hay datos nuevos y refresca la lista global.
+            // ✅ Optimistic UI: Refresca la lista global de inmediato.
             await mutate(); 
             return data;
         } catch (err) {
@@ -62,7 +64,7 @@ export function useOrdenes() {
             
             if (!res.ok) throw new Error("Error al eliminar");
             
-            // Refrescar lista de mesas activas inmediatamente en todos los dispositivos
+            // Refrescar lista de mesas activas inmediatamente
             await mutate(); 
         } catch (error) {
             console.error("❌ Error al eliminar orden:", error);

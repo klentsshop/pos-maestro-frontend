@@ -33,7 +33,7 @@ export function useOrdenHandlers({
         return false;
     };
 
-    const guardarOrden = async () => {
+   const guardarOrden = async () => {
         // 1. Validaciones iniciales críticas
         if (cart.length === 0) return;
 
@@ -61,6 +61,7 @@ export function useOrdenHandlers({
 
         // 3. 👤 Manejo de Mesero y Persistencia
         let meseroFinal = nombreMesero || localStorage.getItem('ultimoMesero') || (esModoCajero ? "Caja" : null);
+        
         if (!meseroFinal) return alert("⚠️ Seleccione mesero antes de guardar.");
 
         localStorage.setItem('ultimoMesero', meseroFinal);
@@ -81,12 +82,14 @@ export function useOrdenHandlers({
             if (typeof setMensajeExito === 'function') setMensajeExito(true);
             setMostrarCarritoMobile(false);
 
+            // 🚀 INTEGRACIÓN SENIOR: Enviamos los disparadores para la APK
             await apiGuardar({ 
                 mesa, 
                 mesero: meseroFinal, 
                 ordenId: currentOrdenId, 
                 platosOrdenados: platosParaGuardar,
                 imprimirSolicitada: true, 
+                imprimirCliente: false,
                 ultimaActualizacion: new Date().toISOString()
             });
 
@@ -101,11 +104,11 @@ export function useOrdenHandlers({
             }, 2000);
 
         } catch (e) { 
+            console.error("🔥 [ERROR_SANITY]:", e);
             if (typeof setMensajeExito === 'function') setMensajeExito(false);
-            console.error("Error en Sanity:", e);
             alert("❌ Error crítico: La orden no se guardó."); 
         }
-    }; // ✅ Cierre agregado
+    };
 
     const cobrarOrden = async (metodoPago) => {
         if (cart.length === 0 || !esModoCajero) return;
@@ -157,32 +160,45 @@ export function useOrdenHandlers({
         } catch (e) { 
             alert('❌ Error en el pago.'); 
         }
-    }; // ✅ Cierre agregado
+    };
 
     const imprimirClienteManual = async () => {
         if (!cart || cart.length === 0) {
-            alert('⚠️ No hay productos');
+            alert('⚠️ No hay productos en el carrito para imprimir.');
             return;
         }
+
         try {
+            // Recuperamos mesero actual para no perder el dato en el parche de impresión
+            let meseroActual = nombreMesero || localStorage.getItem('ultimoMesero') || (esModoCajero ? "Caja" : "Mesero");
+
+            // Preparar los platos con la estructura completa para el ticket
+            const platosParaTicket = cart.map(i => ({ 
+                _key: i._key || i.lineId || Math.random().toString(36).substring(2, 9),
+                nombrePlato: i.nombre, 
+                cantidad: i.cantidad, 
+                precioUnitario: i.precioNum,
+                subtotal: i.precioNum * i.cantidad,
+                comentario: i.comentario || ""
+            }));
+
+            // Disparar la actualización a Sanity
             await apiGuardar({
-                mesa: ordenMesa,
+                mesa: ordenMesa || "Mostrador",
+                mesero: meseroActual,
                 ordenId: ordenActivaId,
-                platosOrdenados: cart.map(i => ({ 
-                    _key: i._key || Math.random().toString(36).substring(2, 9),
-                    nombrePlato: i.nombre, 
-                    cantidad: i.cantidad, 
-                    precioUnitario: i.precioNum 
-                })),
-                imprimirSolicitada: true,
-                imprimirCliente: true, 
+                platosOrdenados: platosParaTicket,
+                imprimirSolicitada: true, // Se activa para entrar en la cola de la APK
+                imprimirCliente: true,    // Especificamos que la APK debe usar formato Cliente
                 ultimaActualizacion: new Date().toISOString()
             });
-            alert('🖨️ Enviando ticket a la cola...');
+
+            alert('🖨️ Enviando ticket de cliente a la cola...');
         } catch (error) {
-            alert('❌ Error al solicitar impresión.');
+            console.error("🔥 [ERROR_IMPRESION]:", error);
+            alert('❌ Error al solicitar la impresión del ticket.');
         }
-    }; // ✅ Cierre agregado
+    };
 
     const cancelarOrden = async () => {
         if (!ordenActivaId) return;
