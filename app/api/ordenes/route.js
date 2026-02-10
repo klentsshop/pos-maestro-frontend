@@ -6,44 +6,60 @@ export const dynamic = 'force-dynamic';
 export async function POST(req) {
     try {
         const body = await req.json();
-        const { mesa, mesero, platosOrdenados, ordenId } = body;
+        // 1. Desestructuración completa de los campos necesarios para la APK y el POS
+        const { 
+            mesa, 
+            mesero, 
+            platosOrdenados, 
+            ordenId, 
+            imprimirSolicitada, 
+            imprimirCliente 
+        } = body;
 
-        // 🧠 MAPEO DE SEGURIDAD: Preparamos los datos para el esquema de Sanity
+        // 🧠 MAPEO DE SEGURIDAD: Mantenemos la lógica original de transformación de platos
         const platosParaSanity = platosOrdenados.map(p => ({
-            // Usamos el lineId (UUID) que generamos en el CartContext como _key
             _key: p.lineId || p._key || Math.random().toString(36).substring(2, 11),
             _type: 'platoOrdenado', 
             nombrePlato: p.nombre || p.nombrePlato,
             cantidad: Number(p.cantidad) || 1,
             precioUnitario: Number(p.precioNum || p.precioUnitario || 0),
             subtotal: Number(p.subtotalNum || p.subtotal || 0),
-            // ✅ Comentario garantizado
             comentario: p.comentario || "" 
         }));
 
+        // Definimos la fecha actual una sola vez para consistencia
+        const ahora = new Date().toISOString();
+
+        // 🏗️ ESTRUCTURA DEL DOCUMENTO: Incluimos los nuevos campos del esquema
         const doc = {
             _type: 'ordenActiva',
             mesa: mesa || 'Mesa Sin Nombre',
             mesero: mesero || 'Mesero',
             platosOrdenados: platosParaSanity,
-            fechaCreacion: new Date().toISOString(),
+            fechaCreacion: ahora,
+            ultimaActualizacion: ahora,
+            // Flags de impresión (disparadores para la APK)
+            imprimirSolicitada: imprimirSolicitada ?? false,
+            imprimirCliente: imprimirCliente ?? false
         };
 
         let resultado;
         if (ordenId) {
-            // Actualizar mesa existente (PATCH)
+            // 🔄 ACTUALIZACIÓN (PATCH): Para mesas que ya están abiertas
             resultado = await sanityClientServer
                 .patch(ordenId)
                 .set({
                     mesa: doc.mesa,
                     mesero: doc.mesero,
                     platosOrdenados: doc.platosOrdenados,
-                    // Actualizamos también la fecha para saber cuándo fue el último cambio
-                    ultimaActualizacion: new Date().toISOString()
+                    ultimaActualizacion: ahora,
+                    // Encendemos los interruptores si el frontend lo solicita
+                    imprimirSolicitada: imprimirSolicitada ?? false,
+                    imprimirCliente: imprimirCliente ?? false
                 })
                 .commit();
         } else {
-            // Crear mesa nueva (CREATE)
+            // ✨ CREACIÓN (CREATE): Para nuevas órdenes o clientes de mostrador
             resultado = await sanityClientServer.create(doc);
         }
 
