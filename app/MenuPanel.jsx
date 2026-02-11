@@ -117,7 +117,7 @@ export default function MenuPanel() {
                     listaMeseros={listaMeseros} esModoCajero={acc.esModoCajero}
                     ordenActivaId={ord.ordenActivaId} numOrdenesActivas={ordenesActivas.length} 
                     cleanPrice={cleanPrice} styles={styles} cancelarOrden={ord.cancelarOrden} 
-                   clearCart={manejarLimpiezaTotal} imprimirTicket={imp.imprimirCliente} 
+                   clearCart={manejarLimpiezaTotal} imprimirTicket={imp.imprimirTicket} 
                     actualizarComentario={actualizarComentario} imprimirComandaCocina={imp.imprimirCocina}
                     propina={propina} setPropina={setPropina} montoManual={montoManual} setMontoManual={setMontoManual}
                 />

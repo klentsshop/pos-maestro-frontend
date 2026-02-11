@@ -162,44 +162,6 @@ export function useOrdenHandlers({
         }
     };
 
-    const imprimirClienteManual = async () => {
-        if (!cart || cart.length === 0) {
-            alert('⚠️ No hay productos en el carrito para imprimir.');
-            return;
-        }
-
-        try {
-            // Recuperamos mesero actual para no perder el dato en el parche de impresión
-            let meseroActual = nombreMesero || localStorage.getItem('ultimoMesero') || (esModoCajero ? "Caja" : "Mesero");
-
-            // Preparar los platos con la estructura completa para el ticket
-            const platosParaTicket = cart.map(i => ({ 
-                _key: i._key || i.lineId || Math.random().toString(36).substring(2, 9),
-                nombrePlato: i.nombre, 
-                cantidad: i.cantidad, 
-                precioUnitario: i.precioNum,
-                subtotal: i.precioNum * i.cantidad,
-                comentario: i.comentario || ""
-            }));
-
-            // Disparar la actualización a Sanity
-            await apiGuardar({
-                mesa: ordenMesa || "Mostrador",
-                mesero: meseroActual,
-                ordenId: ordenActivaId,
-                platosOrdenados: platosParaTicket,
-                imprimirSolicitada: true, // Se activa para entrar en la cola de la APK
-                imprimirCliente: true,    // Especificamos que la APK debe usar formato Cliente
-                ultimaActualizacion: new Date().toISOString()
-            });
-
-            alert('🖨️ Enviando ticket de cliente a la cola...');
-        } catch (error) {
-            console.error("🔥 [ERROR_IMPRESION]:", error);
-            alert('❌ Error al solicitar la impresión del ticket.');
-        }
-    };
-
     const cancelarOrden = async () => {
         if (!ordenActivaId) return;
         if (!esModoCajero) return alert("🔒 PIN de Cajero requerido.");
@@ -225,7 +187,6 @@ export function useOrdenHandlers({
         cargarOrden, 
         guardarOrden, 
         cobrarOrden, 
-        imprimirClienteManual,
         cancelarOrden,
         mensajeExito,  
         setMensajeExito,

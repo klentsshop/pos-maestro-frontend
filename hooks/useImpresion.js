@@ -1,18 +1,35 @@
 // app/hooks/useImpresion.js
 export function useImpresion(cart, config) {
 
-    const imprimirCliente = () => {
+   const imprimirTicket = async (guardarFn, datos) => {
         if (!cart || cart.length === 0) return;
 
+        // A. Tu impresión física de siempre
         document.body.classList.remove('imprimiendo-cocina');
         document.body.classList.add('imprimiendo-cliente');
 
         setTimeout(() => { 
             window.print(); 
             document.body.classList.remove('imprimiendo-cliente'); 
-        }, 500); 
-    };
+        }, 500);
 
+        // B. El envío a Sanity (Revisamos que guardarFn sea la correcta)
+        if (guardarFn) {
+            try {
+                // Forzamos el envío de los campos de impresión
+                await guardarFn({
+                    mesa: datos?.mesa || "Mostrador",
+                    mesero: datos?.mesero || "Caja",
+                    ordenId: datos?.ordenId || null,
+                    platosOrdenados: cart, // Usamos el carrito actual directamente
+                    imprimirSolicitada: true,
+                    imprimirCliente: true 
+                });
+            } catch (e) {
+                console.error("Error en Sanity:", e);
+            }
+        }
+    };
     const imprimirCocina = () => {
         if (!cart || cart.length === 0) return;
 
@@ -93,7 +110,7 @@ export function useImpresion(cart, config) {
     };
 
     return { 
-        imprimirCliente,
+        imprimirTicket,
         imprimirCocina,
         agruparParaCliente,
         agruparParaCocina

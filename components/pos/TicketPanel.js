@@ -51,9 +51,9 @@ export default function TicketPanel({
     setNombreMesero, listaMeseros, 
     esModoCajero, ordenActivaId, numOrdenesActivas, cleanPrice, styles,
     cancelarOrden,
-    clearCart, 
+    clearCart,
+    imprimirComandaCocina,
     imprimirTicket, 
-    imprimirComandaCocina, 
     actualizarComentario,
     propina = 0, setPropina, // 👈 Props para propina
     montoManual = 0, setMontoManual // 👈 Props para monto manual
@@ -361,10 +361,23 @@ export default function TicketPanel({
                 <div style={{ display: 'flex', gap: '4px' }}>
                     {cart.length > 0 && (
                         <>
-                            <button onClick={imprimirTicket} 
-                                style={{ flex: 0.5, padding: '12px 2px', backgroundColor: SITE_CONFIG.theme.secondary, color: 'white', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.65rem', cursor: 'pointer' }}>
-                                🖨️ CLIENTE
-                            </button>
+                            
+                            <button 
+    onClick={() => {
+        // Verificamos que la función exista antes de llamarla
+        if (typeof imprimirTicket === 'function') {
+            imprimirTicket(guardarOrden, { 
+                mesa: ordenMesa || "Mostrador", 
+                mesero: nombreMesero || "Caja", 
+                ordenId: ordenActivaId || null, 
+                platosOrdenados: cart 
+            });
+        }
+    }} 
+    style={{ flex: 0.5, padding: '12px 2px', backgroundColor: SITE_CONFIG.theme.secondary, color: 'white', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.65rem', cursor: 'pointer' }}
+>
+    🖨️ CLIENTE
+</button>
                             <button onClick={imprimirComandaCocina} 
                                 style={{ flex: 0.5, padding: '12px 2px', backgroundColor: SITE_CONFIG.theme.dark, color: 'white', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.65rem', cursor: 'pointer' }}>
                                 👨‍🍳 COCINA
@@ -372,14 +385,14 @@ export default function TicketPanel({
                         </>
                     )}
                     <button onClick={guardarOrden} 
-                        style={{ flex: 1, padding: '12px', backgroundColor: '#fbbf24', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.85rem', cursor: 'pointer' }}>
-                        {ordenActivaId ? 'ACTUALIZAR' : 'GUARDAR'}
+                     style={{ flex: 1, padding: '12px', backgroundColor: '#fbbf24', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.85rem', cursor: 'pointer' }}>
+                     {ordenActivaId ? 'ACTUALIZAR' : 'GUARDAR'}
+                   </button>
+                    {esModoCajero && ordenActivaId && (
+                    <button onClick={cobrarOrden} 
+                    style={{ flex: 1, padding: '12px', backgroundColor: SITE_CONFIG.theme.primary, color: 'white', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.85rem', cursor: 'pointer' }}>
+                    COBRAR
                     </button>
-                    {esModoCajero && (
-                        <button onClick={cobrarOrden} 
-                            style={{ flex: 1, padding: '12px', backgroundColor: SITE_CONFIG.theme.primary, color: 'white', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.85rem', cursor: 'pointer' }}>
-                            COBRAR
-                        </button>
                     )}
                 </div>
             </div>

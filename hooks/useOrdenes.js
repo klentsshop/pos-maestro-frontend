@@ -20,14 +20,16 @@ export function useOrdenes() {
     const guardarOrden = async (ordenPayload) => {
         setCargandoAccion(true);
         try {
-            // 🧠 INTEGRACIÓN SENIOR: Mantenemos el spread de ordenPayload para no perder nada,
-            // pero aseguramos que los disparadores de impresión viajen al servidor.
+            // 📝 REVISIÓN LÍNEA POR LÍNEA:
             const payload = {
                 ...ordenPayload,
                 estado: ordenPayload.estado || 'abierta',
-                // ✅ Leemos los flags que vienen del hook useOrdenHandlers
-                imprimirSolicitada: ordenPayload.imprimirSolicitada ?? false,
-                imprimirCliente: ordenPayload.imprimirCliente ?? false,
+                
+                // 🚀 AJUSTE CLAVE: Priorizamos el 'true' si viene del botón.
+                // Si ordenPayload.imprimirCliente es true, se queda true.
+                imprimirSolicitada: ordenPayload.imprimirSolicitada === true ? true : (ordenPayload.imprimirSolicitada ?? false),
+                imprimirCliente: ordenPayload.imprimirCliente === true ? true : (ordenPayload.imprimirCliente ?? false),
+                
                 ultimaActualizacion: new Date().toISOString()
             };
 
@@ -41,8 +43,11 @@ export function useOrdenes() {
             
             const data = await res.json();
             
-            // ✅ Optimistic UI: Refresca la lista global de inmediato.
-            await mutate(); 
+            // ✅ MANTENEMOS TU LÓGICA ANTI-DUPLICADOS:
+            // Esto limpia el caché local y trae la "verdad" de Sanity 
+            // asegurando que no aparezcan mesas fantasma.
+            mutate(undefined, { revalidate: true }); 
+            
             return data;
         } catch (err) {
             console.error("❌ Error guardarOrden:", err);
@@ -51,7 +56,6 @@ export function useOrdenes() {
             setCargandoAccion(false);
         }
     };
-
     // FUNCIÓN PARA ELIMINAR (Tras Cobro o Cancelación)
     const eliminarOrden = async (ordenId) => {
         if (!ordenId) return;
@@ -65,7 +69,7 @@ export function useOrdenes() {
             if (!res.ok) throw new Error("Error al eliminar");
             
             // Refrescar lista de mesas activas inmediatamente
-            await mutate(); 
+            setTimeout(() => mutate(), 500);
         } catch (error) {
             console.error("❌ Error al eliminar orden:", error);
         }
