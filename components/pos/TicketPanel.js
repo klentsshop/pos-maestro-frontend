@@ -96,7 +96,7 @@ export default function TicketPanel({
                     lineHeight: 1.2
                 }}
             >
-                {SITE_CONFIG.brand.shortName.toUpperCase()} {ordenMesa ? `(${ordenMesa})` : 'ACTUAL'}
+                {(SITE_CONFIG.brand.shortName || SITE_CONFIG.brand.name)?.toUpperCase() || "POS"} {ordenMesa ? `(${ordenMesa})` : 'ACTUAL'}
             </h2>
 
             {cart.length > 0 && (
@@ -333,7 +333,7 @@ export default function TicketPanel({
                             >
                                 {METODOS_PAGO.map(m => (
                                     <option key={m.value} value={m.value}>
-                                        {limpiarIconoDeTexto(m.title).toUpperCase()}
+                                        {(limpiarIconoDeTexto(m?.title) || "")?.toUpperCase() || ""}
                                     </option>
                                 ))}
                             </select>

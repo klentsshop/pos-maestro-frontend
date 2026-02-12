@@ -27,7 +27,7 @@ export async function POST(req) {
 
         // --- FOLIO PROFESIONAL ---
         const datePart = fechaUTC.slice(2, 10).replace(/-/g, '');
-        const randomPart = crypto.randomBytes(2).toString('hex').toUpperCase();
+        const randomPart = (crypto.randomBytes(2).toString('hex') || "")?.toUpperCase() || "0000";
         const folioGenerado = `TAL-${datePart}-${randomPart}`;
 
         // --- MAPEO DE PLATOS VENDIDOS ---
