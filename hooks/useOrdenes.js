@@ -43,10 +43,11 @@ export function useOrdenes() {
             
             const data = await res.json();
             
-            // ✅ MANTENEMOS TU LÓGICA ANTI-DUPLICADOS:
-            // Esto limpia el caché local y trae la "verdad" de Sanity 
-            // asegurando que no aparezcan mesas fantasma.
-            mutate(undefined, { revalidate: true }); 
+            // ✅ AJUSTE SENIOR: 
+            // Cambiamos mutate(undefined) por un mutate() asíncrono.
+            // Esto evita que las mesas "desaparezcan" de golpe, recuperando la fluidez antigua,
+            // pero forzando a SWR a validar los nuevos datos de Sanity inmediatamente.
+            await mutate(); 
             
             return data;
         } catch (err) {
@@ -56,6 +57,7 @@ export function useOrdenes() {
             setCargandoAccion(false);
         }
     };
+
     // FUNCIÓN PARA ELIMINAR (Tras Cobro o Cancelación)
     const eliminarOrden = async (ordenId) => {
         if (!ordenId) return;
@@ -68,8 +70,8 @@ export function useOrdenes() {
             
             if (!res.ok) throw new Error("Error al eliminar");
             
-            // Refrescar lista de mesas activas inmediatamente
-            setTimeout(() => mutate(), 500);
+            // Refrescar lista de mesas activas inmediatamente sin borrar el estado local
+            await mutate(); 
         } catch (error) {
             console.error("❌ Error al eliminar orden:", error);
         }

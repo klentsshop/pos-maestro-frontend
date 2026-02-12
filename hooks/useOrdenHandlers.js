@@ -33,83 +33,96 @@ export function useOrdenHandlers({
         return false;
     };
 
-   const guardarOrden = async () => {
-        // 1. Validaciones iniciales críticas
-        if (cart.length === 0) return;
+   const guardarOrden = async (opciones = {}) => {
+    // 1. 🛡️ Validaciones iniciales críticas
+    if (cart.length === 0) return;
 
-        let mesaDefault = esModoCajero ? "Mostrador" : "Mesa 1";
-        let mesa = ordenMesa || prompt("Mesa o Cliente:", mesaDefault);
-        if (!mesa) return;
+    let mesaDefault = esModoCajero ? "Mostrador" : "Mesa 1";
+    let mesa = ordenMesa || prompt("Mesa o Cliente:", mesaDefault);
+    if (!mesa) return;
 
-        // 2. 🛡️ Validación de Duplicados (Protección de Integridad)
-        if (!ordenActivaId) {
-            const existe = ordenesActivas.find(
-                (o) => o.mesa.toLowerCase() === mesa.toLowerCase()
-            );
+    // 2. 🛡️ Escudo Anti-Duplicados (Protección de Integridad)
+    // Solo si es una orden nueva (no tenemos ordenActivaId), verificamos que la mesa no esté ocupada
+    if (!ordenActivaId) {
+        const existe = ordenesActivas.find(
+            (o) => o.mesa.toLowerCase() === mesa.trim().toLowerCase()
+        );
 
-            if (existe) {
-                const deseaCargar = confirm(`La [${mesa}] tiene orden activa. ¿Cargarla?`);
-                if (deseaCargar) {
-                    cargarOrden(existe._id); 
-                    return; 
-                } else {
-                    alert("Operación cancelada. No se puede crear otra orden con el mismo nombre.");
-                    return; 
-                }
+        if (existe) {
+            const deseaCargar = confirm(`La [${mesa}] ya tiene una orden activa. ¿Deseas cargarla para añadir más productos?`);
+            if (deseaCargar) {
+                cargarOrden(existe._id); 
+                return; 
+            } else {
+                alert("Operación cancelada. Para evitar duplicados, usa un nombre de mesa diferente.");
+                return; 
             }
         }
+    }
 
-        // 3. 👤 Manejo de Mesero y Persistencia
-        let meseroFinal = nombreMesero || localStorage.getItem('ultimoMesero') || (esModoCajero ? "Caja" : null);
-        
-        if (!meseroFinal) return alert("⚠️ Seleccione mesero antes de guardar.");
+    // 3. 👤 Manejo de Mesero y Persistencia
+    let meseroFinal = nombreMesero || localStorage.getItem('ultimoMesero') || (esModoCajero ? "Caja" : null);
+    
+    if (!meseroFinal) {
+        alert("⚠️ Por favor, selecciona un mesero antes de guardar la orden.");
+        return;
+    }
 
-        localStorage.setItem('ultimoMesero', meseroFinal);
+    // Guardamos el mesero para que no tenga que elegirlo en la siguiente mesa
+    localStorage.setItem('ultimoMesero', meseroFinal);
 
-        // --- ⚡ ESTRATEGIA DE VELOCIDAD Y PREPARACIÓN DE DATOS ---
-        const platosParaGuardar = cart.map(i => ({ 
-            _key: i._key || i.lineId || Math.random().toString(36).substring(2, 9), 
-            nombrePlato: i.nombre, 
-            cantidad: i.cantidad, 
-            precioUnitario: i.precioNum, 
-            subtotal: i.precioNum * i.cantidad,
-            comentario: i.comentario || "" 
-        }));
+    // 4. ⚡ Preparación de Datos Normalizados
+    const platosParaGuardar = cart.map(i => ({ 
+        _key: i._key || i.lineId || Math.random().toString(36).substring(2, 9), 
+        nombrePlato: i.nombre, 
+        cantidad: i.cantidad, 
+        precioUnitario: i.precioNum, 
+        subtotal: i.precioNum * i.cantidad,
+        comentario: i.comentario || "" 
+    }));
 
-        const currentOrdenId = ordenActivaId;
+    const currentOrdenId = ordenActivaId;
 
-        try {
-            if (typeof setMensajeExito === 'function') setMensajeExito(true);
-            setMostrarCarritoMobile(false);
+    try {
+        // Interfaz: Mostramos carga y cerramos carrito en móvil
+        if (typeof setMensajeExito === 'function') setMensajeExito(true);
+        setMostrarCarritoMobile(false);
 
-            // 🚀 INTEGRACIÓN SENIOR: Enviamos los disparadores para la APK
-            await apiGuardar({ 
-                mesa, 
-                mesero: meseroFinal, 
-                ordenId: currentOrdenId, 
-                platosOrdenados: platosParaGuardar,
-                imprimirSolicitada: true, 
-                imprimirCliente: false,
-                ultimaActualizacion: new Date().toISOString()
-            });
+        // 🚀 ENVÍO A API (Limpieza de interruptor de cliente)
+        await apiGuardar({ 
+            mesa: mesa.trim(), 
+            mesero: meseroFinal, 
+            ordenId: currentOrdenId, 
+            platosOrdenados: platosParaGuardar,
+            // ✅ Mantenemos Cocina: Esto hace que la comanda salga en la APK de cocina
+            imprimirSolicitada: true, 
+            // 🗑️ LIMPIEZA: Eliminamos la lógica de opciones.imprimirCliente
+            // Ya no enviamos este switch aquí para evitar bloqueos de documento.
+            ultimaActualizacion: new Date().toISOString()
+        });
 
-            await refreshOrdenes();
+        // 🛡️ REFUERZO ANTI-DUPLICIDAD: Refrescamos Sanity inmediatamente
+        await refreshOrdenes();
 
-            setTimeout(() => {
-                if (typeof setMensajeExito === 'function') setMensajeExito(false);
-                setOrdenActivaId(null); 
-                setOrdenMesa(null); 
-                clearCart(); 
-                if (meseroFinal) setNombreMesero(meseroFinal);
-            }, 2000);
-
-        } catch (e) { 
-            console.error("🔥 [ERROR_SANITY]:", e);
+        // ⏳ Finalización de la operación
+        setTimeout(() => {
             if (typeof setMensajeExito === 'function') setMensajeExito(false);
-            alert("❌ Error crítico: La orden no se guardó."); 
-        }
-    };
+            
+            // Limpiamos los estados locales para quedar listos para la siguiente orden
+            setOrdenActivaId(null); 
+            setOrdenMesa(null); 
+            clearCart(); 
+            
+            // Mantenemos el mesero visualmente si fue seleccionado
+            if (meseroFinal) setNombreMesero(meseroFinal);
+        }, 1500); // Reducido a 1.5s para mayor agilidad
 
+    } catch (e) { 
+        console.error("🔥 [ERROR_GUARDAR_ORDEN]:", e);
+        if (typeof setMensajeExito === 'function') setMensajeExito(false);
+        alert("❌ Error crítico: La conexión con Sanity falló. La orden NO se guardó."); 
+    }
+};
     const cobrarOrden = async (metodoPago) => {
         if (cart.length === 0 || !esModoCajero) return;
         if (!confirm(`💰 ¿Cobrar $${total.toLocaleString('es-CO')}?`)) return;

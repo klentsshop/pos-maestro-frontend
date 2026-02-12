@@ -1,35 +1,34 @@
 // app/hooks/useImpresion.js
+
+/**
+ * 🛠️ Hook de Impresión Senior
+ * Maneja la lógica de agrupación de platos y el disparo de impresión por CSS Media Queries.
+ */
 export function useImpresion(cart, config) {
 
-   const imprimirTicket = async (guardarFn, datos) => {
+    /**
+     * 🖨️ IMPRIMIR TICKET CLIENTE
+     * Limpiado: Ya no intenta forzar switches en Sanity.
+     * Solo dispara la impresión del navegador para el Ticket de Caja.
+     */
+    const imprimirTicket = () => {
         if (!cart || cart.length === 0) return;
 
-        // A. Tu impresión física de siempre
+        // Preparamos las clases CSS para que el TicketTemplate muestre solo lo de Cliente
         document.body.classList.remove('imprimiendo-cocina');
         document.body.classList.add('imprimiendo-cliente');
 
+        // Pequeño delay para asegurar que el DOM se ajuste antes de abrir el diálogo
         setTimeout(() => { 
             window.print(); 
             document.body.classList.remove('imprimiendo-cliente'); 
-        }, 500);
-
-        // B. El envío a Sanity (Revisamos que guardarFn sea la correcta)
-        if (guardarFn) {
-            try {
-                // Forzamos el envío de los campos de impresión
-                await guardarFn({
-                    mesa: datos?.mesa || "Mostrador",
-                    mesero: datos?.mesero || "Caja",
-                    ordenId: datos?.ordenId || null,
-                    platosOrdenados: cart, // Usamos el carrito actual directamente
-                    imprimirSolicitada: true,
-                    imprimirCliente: true 
-                });
-            } catch (e) {
-                console.error("Error en Sanity:", e);
-            }
-        }
+        }, 300);
     };
+
+    /**
+     * 👨‍🍳 IMPRIMIR COMANDA COCINA
+     * Dispara la impresión de la comanda con notas agrupadas.
+     */
     const imprimirCocina = () => {
         if (!cart || cart.length === 0) return;
 
@@ -39,13 +38,17 @@ export function useImpresion(cart, config) {
         setTimeout(() => { 
             window.print(); 
             document.body.classList.remove('imprimiendo-cocina');
-        }, 500);
+        }, 300);
     };
 
-    // 👤 CLIENTE → Agrupa TODO sin comentarios
+    /**
+     * 👤 AGRUPACIÓN PARA CLIENTE
+     * Suma cantidades de items idénticos (mismo nombre y precio) para un ticket limpio.
+     */
     const agruparParaCliente = () => {
         const agrupados = cart.reduce((acc, item) => {
-            const key = `${item.nombre}-${item.precioNum || 0}`;
+            const precioBase = item.precioNum || 0;
+            const key = `${item.nombre}-${precioBase}`;
 
             if (!acc[key]) {
                 acc[key] = { 
@@ -56,21 +59,24 @@ export function useImpresion(cart, config) {
             }
 
             acc[key].cantidad += item.cantidad;
-            acc[key].subtotal += (item.precioNum * item.cantidad);
+            acc[key].subtotal += (precioBase * item.cantidad);
             return acc;
         }, {});
 
         return Object.values(agrupados);
     };
 
-    // 👨‍🍳 COCINA → Agrupa por comentario + ORDENA (bebidas al final)
+    /**
+     * 👨‍🍳 AGRUPACIÓN PARA COCINA
+     * Agrupa por comentario + prioriza el orden (bebidas al final).
+     */
     const agruparParaCocina = () => {
         const agrupados = cart.reduce((acc, item) => {
             const notaKey = item.comentario
                 ? item.comentario.trim().toLowerCase()
                 : 'sin-nota';
 
-            const key = `${item.nombre}-${item.precioNum || 0}-${notaKey}`;
+            const key = `${item.nombre}-${notaKey}`;
 
             if (!acc[key]) {
                 acc[key] = { 
@@ -87,19 +93,19 @@ export function useImpresion(cart, config) {
 
         const lista = Object.values(agrupados);
 
-        // 🔥 ORDEN PROFESIONAL DE COCINA
-        const bebidaSlug = (config?.categoriaBebidas || '').toLowerCase();
-        const prioridad = (config?.palabraPrioridadCocina || '').toLowerCase();
+        // 🔥 Lógica de ordenamiento profesional para cocina
+        const bebidaSlug = (config?.categoriaBebidas || 'bebida').toLowerCase();
+        const prioridad = (config?.palabraPrioridadCocina || 'almuerzo').toLowerCase();
 
         return lista.sort((a, b) => {
             const catA = (a.categoria || '').toLowerCase();
             const catB = (b.categoria || '').toLowerCase();
 
-            // 1️⃣ Bebidas SIEMPRE al final
+            // 1. Bebidas al final de la comanda
             if (catA === bebidaSlug && catB !== bebidaSlug) return 1;
             if (catA !== bebidaSlug && catB === bebidaSlug) return -1;
 
-            // 2️⃣ Prioridad (ej: almuerzo)
+            // 2. Prioridad por nombre (Ej: Sopa o Almuerzo arriba)
             const esA = a.nombre.toLowerCase().includes(prioridad);
             const esB = b.nombre.toLowerCase().includes(prioridad);
             if (esA && !esB) return -1;

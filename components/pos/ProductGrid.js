@@ -132,16 +132,16 @@ export default function ProductGrid({
                     ) : (
                         /* MODO 3: NAVEGACIÓN RÁPIDA DE MESAS */
                         <div className={styles.contenedorMesasRapidas}>
-                       <span className={styles.etiquetaMesas}>MESAS ACTIVAS:</span>
-                       <div className={styles.scrollMesas}>
+                        <span className={styles.etiquetaMesas}>MESAS ACTIVAS:</span>
+                        <div className={styles.scrollMesas}>
                         {ordenesActivas && ordenesActivas.map((o) => (
                         <button 
                         key={o._id} 
                         className={`${styles.botonMesaRapida} ${ordenActivaId === o._id ? styles.tableBtnActive : ''}`} 
-                         onClick={() => cargarOrden(o._id)} // 👈 Lógica idéntica a la de escritorio
-                        >
+                        onClick={() => cargarOrden(o._id)}
+                       >
                         {o.mesa}
-                        </button>
+                      </button>
                       ))}
                         </div>
                         </div>

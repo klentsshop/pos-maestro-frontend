@@ -22,6 +22,7 @@ import ListaOrdenesModal from '@/components/modals/ListaOrdenesModal';
 import TicketPanel from '@/components/pos/TicketPanel';
 import ProductGrid from '@/components/pos/ProductGrid';
 import styles from './MenuPanel.module.css';
+import HistorialVentasModal from '@/components/modals/HistorialVentasModal';
 
 export default function MenuPanel() {
     const { 
@@ -44,6 +45,7 @@ export default function MenuPanel() {
     const [mostrarCarritoMobile, setMostrarCarritoMobile] = useState(false);
     const [listaMeseros, setListaMeseros] = useState([]);
     const [busqueda, setBusqueda] = useState(''); // 🔍 Nuevo estado para el buscador
+    const [mostrarModalHistorial, setMostrarModalHistorial] = useState(false);
 
     const rep = useReportes(getFechaBogota);
     const imp = useImpresion(cart); 
@@ -65,6 +67,23 @@ export default function MenuPanel() {
         setMostrarCarritoMobile, nombreMesero, setNombreMesero
     });
 
+    const handleReimprimirVenta = async (venta) => {
+    try {
+        const res = await fetch('/api/ventas/reimprimir', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ venta })
+        });
+        if (res.ok) {
+            alert("✅ Ticket enviado a la impresora");
+        } else {
+            alert("❌ Error al generar reimpresión");
+        }
+    } catch (error) {
+        console.error(error);
+        alert("❌ Error de conexión");
+    }
+   };
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -117,9 +136,10 @@ export default function MenuPanel() {
                     listaMeseros={listaMeseros} esModoCajero={acc.esModoCajero}
                     ordenActivaId={ord.ordenActivaId} numOrdenesActivas={ordenesActivas.length} 
                     cleanPrice={cleanPrice} styles={styles} cancelarOrden={ord.cancelarOrden} 
-                   clearCart={manejarLimpiezaTotal} imprimirTicket={imp.imprimirTicket} 
+                   clearCart={manejarLimpiezaTotal} imprimirTicket={imp.imprimirCliente} 
                     actualizarComentario={actualizarComentario} imprimirComandaCocina={imp.imprimirCocina}
                     propina={propina} setPropina={setPropina} montoManual={montoManual} setMontoManual={setMontoManual}
+                    setMostrarModalHistorial={setMostrarModalHistorial}
                 />
 
                 <ProductGrid 
@@ -172,6 +192,11 @@ export default function MenuPanel() {
                 onGenerar={() => rep.cargarReporteAdmin()} 
                 cargando={rep.cargandoAdmin} 
                 reporte={rep.reporteAdmin} 
+            />
+            <HistorialVentasModal 
+             isOpen={mostrarModalHistorial} 
+             onClose={() => setMostrarModalHistorial(false)} 
+             onReimprimir={handleReimprimirVenta}
             />
         </div>
     );

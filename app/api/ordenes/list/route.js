@@ -6,7 +6,7 @@ export const revalidate = 0;
 
 /**
  * LISTAR ÓRDENES ACTIVAS
- * Mantenemos la lógica intacta para que el cajero vea los platos.
+ * Mantenemos la consulta limpia para el panel de mesas.
  */
 export async function GET() {
     try {
@@ -16,11 +16,10 @@ export async function GET() {
             mesero,
             fechaCreacion,
             platosOrdenados,
-            imprimirSolicitada,
-            imprimirCliente
+            imprimirSolicitada
         }`;
 
-        const data = await sanityClientServer.fetch(query);
+        const data = await sanityClientServer.fetch(query, {}, { useCdn: false });
         return NextResponse.json(data || []); 
     } catch (error) {
         console.error('[API_LIST_GET_ERROR]:', error);
@@ -30,21 +29,21 @@ export async function GET() {
 
 /**
  * CREAR O ACTUALIZAR ORDEN
- * Integración total con la lógica de impresión para la APK.
+ * Optimizada para evitar duplicados y procesar solo la comanda de cocina.
  */
 export async function POST(request) {
     try {
         const body = await request.json();
-        // 1. Extraemos los nuevos campos (imprimirSolicitada, imprimirCliente)
-        const { mesa, mesero, platosOrdenados, ordenId, imprimirSolicitada, imprimirCliente } = body;
+        const { mesa, mesero, platosOrdenados, ordenId } = body;
 
         if (!mesa || !Array.isArray(platosOrdenados) || platosOrdenados.length === 0) {
             return NextResponse.json(
-                { error: 'Datos incompletos para crear/actualizar la orden.' },
+                { error: 'Datos incompletos para procesar la orden.' },
                 { status: 400 }
             );
         }
 
+        // 1. Normalización de platos (Lógica de negocio intacta)
         const platosNormalizados = platosOrdenados.map(p => {
             const cantidad = Number(p.cantidad) || 1;
             const precio = Number(p.precioUnitario || p.precioNum) || 0; 
@@ -60,8 +59,47 @@ export async function POST(request) {
         });
 
         const fechaActual = new Date().toISOString();
+        
+        // 🚀 LIMPIEZA: Solo mantenemos imprimirSolicitada (Cocina) que sí funciona bien.
+        // El interruptor de Cliente se maneja ahora por el Historial de Ventas.
+        const valorSolicitada = body.imprimirSolicitada === true;
 
-        // OBJETO BASE PARA CREACIÓN (Incluye flags de impresión)
+        // 🛡️ ESCUDO ANTI-DUPLICADOS (Blindaje de ID y Mesa)
+        let idDestino = ordenId;
+        if (!idDestino) {
+            const mesaPrevia = await sanityClientServer.fetch(
+                `*[_type == "ordenActiva" && mesa == $mesa][0]._id`,
+                { mesa },
+                { useCdn: false }
+            );
+            if (mesaPrevia) idDestino = mesaPrevia;
+        }
+
+        if (idDestino) {
+            // ACTUALIZAR (PATCH) - Evita crear mesas fantasmales
+            try {
+                const updated = await sanityClientServer
+                    .patch(idDestino)
+                    .set({
+                        mesa,
+                        mesero,
+                        platosOrdenados: platosNormalizados,
+                        ultimaActualizacion: fechaActual,
+                        imprimirSolicitada: valorSolicitada,
+                        // 🗑️ Eliminamos 'imprimirCliente' de aquí para evitar conflictos de escritura
+                    })
+                    .commit();
+
+                return NextResponse.json({
+                    message: 'Orden actualizada',
+                    ordenId: updated._id
+                });
+            } catch (patchError) {
+                console.warn('⚠️ Fallo en Patch, reintentando como creación.');
+            }
+        }
+
+        // CREAR NUEVA (Solo si la mesa realmente no existe)
         const nuevaOrden = {
             _type: 'ordenActiva',
             mesa,
@@ -69,46 +107,15 @@ export async function POST(request) {
             fechaCreacion: fechaActual,
             ultimaActualizacion: fechaActual,
             platosOrdenados: platosNormalizados,
-            imprimirSolicitada: imprimirSolicitada ?? false,
-            imprimirCliente: imprimirCliente ?? false
+            imprimirSolicitada: valorSolicitada
         };
 
-        // --- LÓGICA DE ACTUALIZACIÓN CON PATCH ---
-        if (ordenId) {
-            try {
-                const updated = await sanityClientServer
-                    .patch(ordenId)
-                    .set({
-                        mesa,
-                        mesero,
-                        platosOrdenados: platosNormalizados,
-                        ultimaActualizacion: fechaActual,
-                        // ✅ DISPARADORES APK: Ahora sí viajan a Sanity
-                        imprimirSolicitada: imprimirSolicitada ?? false,
-                        imprimirCliente: imprimirCliente ?? false
-                    })
-                    .commit();
-
-                return NextResponse.json({
-                    message: 'Orden actualizada correctamente',
-                    ordenId: updated._id,
-                    mesa: updated.mesa,
-                    mesero: updated.mesero
-                });
-            } catch (patchError) {
-                console.warn('⚠️ ID de orden no encontrado para patch, procediendo a crear nueva.');
-            }
-        }
-
-        // --- CREAR NUEVA ---
         const created = await sanityClientServer.create(nuevaOrden);
 
         return NextResponse.json(
             {
-                message: 'Orden creada correctamente',
-                ordenId: created._id,
-                mesa: created.mesa,
-                mesero: created.mesero
+                message: 'Orden creada',
+                ordenId: created._id
             },
             { status: 201 }
         );
@@ -116,7 +123,7 @@ export async function POST(request) {
     } catch (error) {
         console.error('🔥 [API_LIST_POST_ERROR]:', error);
         return NextResponse.json(
-            { error: 'Error al procesar orden en Sanity', details: error.message },
+            { error: 'Error en servidor Sanity', details: error.message },
             { status: 500 }
         );
     }

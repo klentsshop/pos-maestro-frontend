@@ -56,7 +56,8 @@ export default function TicketPanel({
     imprimirTicket, 
     actualizarComentario,
     propina = 0, setPropina, // 👈 Props para propina
-    montoManual = 0, setMontoManual // 👈 Props para monto manual
+    montoManual = 0, setMontoManual,
+    setMostrarModalHistorial // 👈 Props para monto manual
 }) {
     // 🔍 Mejora: Función para limpiar el emoji del título y evitar el doble icono
     const limpiarIconoDeTexto = (texto) => {
@@ -207,14 +208,14 @@ export default function TicketPanel({
         ADMIN
     </button>
 
-    {/* BORRAR (ligado a órdenes, pero visualmente abajo) */}
+    {/* BORRAR: Solo aparece si hay una mesa cargada y es cajero */}
     {ordenActivaId && esModoCajero && (
         <button 
             onClick={cancelarOrden} 
             style={{
-                flex: '0 0 calc(50% - 6px)',
-                padding: 'clamp(8px, 2.4vw, 7px) clamp(4px, 1.5vw, 6px)',
-                fontSize: 'clamp(0.95rem, 2.8vw, 0.85rem)',
+                flex: '0 0 calc(33.3333% - 6px)', // Dividido en 3
+                padding: 'clamp(14px, 3.5vw, 10px) clamp(4px, 1.5vw, 6px)',
+                fontSize: 'clamp(0.85rem, 2.5vw, 0.75rem)',
                 backgroundColor: '#000',
                 color: SITE_CONFIG.theme.danger,
                 border: `1px solid ${SITE_CONFIG.theme.danger}`,
@@ -231,9 +232,10 @@ export default function TicketPanel({
     <button 
         onClick={registrarGasto} 
         style={{
+            // Si hay mesa cargada se divide en 3, si no, se divide en 2 con Ventas
             flex: ordenActivaId && esModoCajero
-                ? '0 0 calc(50% - 6px)'
-                : '0 0 100%',
+                ? '0 0 calc(33.3333% - 6px)'
+                : '0 0 calc(50% - 6px)',
             padding: 'clamp(14px, 3.5vw, 10px) clamp(4px, 1.5vw, 6px)',
             fontSize: 'clamp(0.95rem, 2.8vw, 0.85rem)',
             backgroundColor: SITE_CONFIG.theme.accent,
@@ -245,6 +247,26 @@ export default function TicketPanel({
         }}
     >
         + GASTO
+    </button>
+
+    {/* 🕒 VENTAS: Nuevo botón para el historial */}
+    <button 
+        onClick={() => setMostrarModalHistorial(true)} // Función para abrir tu nuevo modal
+        style={{
+            flex: ordenActivaId && esModoCajero
+                ? '0 0 calc(33.3333% - 6px)'
+                : '0 0 calc(50% - 6px)',
+            padding: 'clamp(14px, 3.5vw, 10px) clamp(4px, 1.5vw, 6px)',
+            fontSize: 'clamp(0.95rem, 2.8vw, 0.85rem)',
+            backgroundColor: '#228B22', 
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            fontWeight: '900',
+            cursor: 'pointer'
+        }}
+    >
+        VENTAS
     </button>
 </div>
 </div>
@@ -362,22 +384,10 @@ export default function TicketPanel({
                     {cart.length > 0 && (
                         <>
                             
-                            <button 
-    onClick={() => {
-        // Verificamos que la función exista antes de llamarla
-        if (typeof imprimirTicket === 'function') {
-            imprimirTicket(guardarOrden, { 
-                mesa: ordenMesa || "Mostrador", 
-                mesero: nombreMesero || "Caja", 
-                ordenId: ordenActivaId || null, 
-                platosOrdenados: cart 
-            });
-        }
-    }} 
-    style={{ flex: 0.5, padding: '12px 2px', backgroundColor: SITE_CONFIG.theme.secondary, color: 'white', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.65rem', cursor: 'pointer' }}
->
-    🖨️ CLIENTE
-</button>
+                            <button onClick={imprimirTicket} 
+                                style={{ flex: 0.5, padding: '12px 2px', backgroundColor: SITE_CONFIG.theme.secondary, color: 'white', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.65rem', cursor: 'pointer' }}>
+                                🖨️ CLIENTE
+                            </button>
                             <button onClick={imprimirComandaCocina} 
                                 style={{ flex: 0.5, padding: '12px 2px', backgroundColor: SITE_CONFIG.theme.dark, color: 'white', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.65rem', cursor: 'pointer' }}>
                                 👨‍🍳 COCINA
