@@ -6,21 +6,22 @@ export async function POST(req) {
         const { venta } = await req.json();
         
         const objetoTicket = {
-            _type: 'ticketCobro',
+            _type: 'ticketCobro', // Asegúrate que la APK busque este tipo
             mesa: `COPIA: ${venta.mesa}`,
             mesero: venta.mesero,
-            items: (venta.platosVendidosV2 || []).map(p => ({
+            // 🚀 IMPORTANTE: Usamos 'platosOrdenados' o 'items' según lo que la APK espere
+            platosOrdenados: (venta.platosVendidosV2 || []).map(p => ({
                 _key: Math.random().toString(36).substring(2, 9),
                 nombrePlato: p.nombrePlato,
                 cantidad: p.cantidad,
                 precio: p.precioUnitario,
                 subtotal: p.subtotal
             })),
-            subtotal: Number(venta.totalPagado),
-            propina: Number(venta.propinaRecaudada || 0),
-            total: Number(venta.totalPagado) + Number(venta.propinaRecaudada || 0),
-            imprimirCliente: true, // Forzamos la impresión
-            impreso: false,
+            totalPagado: Number(venta.totalPagado),
+            propinaRecaudada: Number(venta.propinaRecaudada || 0),
+            // 🎯 LOS DISPARADORES PARA LA APK
+            imprimirSolicitada: true, // 👈 INDISPENSABLE para que el Watcher lo atrape
+            imprimirCliente: true,    // 👈 Para que use el clienteRenderer
             fecha: new Date().toISOString()
         };
 
