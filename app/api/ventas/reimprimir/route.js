@@ -7,7 +7,7 @@ export async function POST(req) {
         
         const objetoTicket = {
             _type: 'ticketCobro', // Asegúrate que la APK busque este tipo
-            mesa: `COPIA: ${venta.mesa}`,
+            mesa: `${venta.mesa}`,
             mesero: venta.mesero,
             // 🚀 IMPORTANTE: Usamos 'platosOrdenados' o 'items' según lo que la APK espere
             platosOrdenados: (venta.platosVendidosV2 || []).map(p => ({
