@@ -38,24 +38,32 @@ export function CartProvider({ children }) {
   const addProduct = (product) => {
     const precioNum = cleanPrice(product.precio);
     
+    // 1. Obtenemos el ID real (sea _id o id)
+    const pId = product._id || product.id;
+
     setItems(prev => {
-      // 🧠 LÓGICA DE AGRUPACIÓN INTELIGENTE:
-      const existingIdx = prev.findIndex(it => 
-        it._id === product._id && (!it.comentario || it.comentario.trim() === '')
-      );
+      // 2. Buscamos el producto comparando ambos posibles campos de ID
+      const existingIdx = prev.findIndex(it => {
+        const itId = it._id || it.id;
+        return itId === pId && (!it.comentario || it.comentario.trim() === '');
+      });
 
       if (existingIdx !== -1) {
         const copy = [...prev];
+        const nuevaCantidad = copy[existingIdx].cantidad + 1;
+        
         copy[existingIdx] = { 
           ...copy[existingIdx], 
-          cantidad: copy[existingIdx].cantidad + 1,
-          subtotalNum: (copy[existingIdx].cantidad + 1) * precioNum
+          cantidad: nuevaCantidad,
+          subtotalNum: nuevaCantidad * precioNum
         };
         return copy;
       }
 
+      // 3. Si es nuevo, lo agregamos asegurando que lleve un ID válido
       return [...prev, {
         ...product,
+        _id: pId, // Guardamos el ID unificado para la próxima comparación
         lineId: crypto.randomUUID(),
         cantidad: 1,
         precioNum,
@@ -64,7 +72,6 @@ export function CartProvider({ children }) {
       }];
     });
   };
-
   const setCartFromOrden = (platosOrdenados = []) => {
     localStorage.removeItem('talanquera_cart');
     
