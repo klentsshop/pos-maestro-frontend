@@ -14,11 +14,8 @@ export async function POST(request) {
 
         // 🕛 NORMALIZACIÓN IDÉNTICA A TU API ADMIN (Corte Colombia)
         // Esto asegura que si buscas "hoy", tome desde las 00:00 hasta las 23:59
-        const inicio = new Date(fechaSeleccionada);
-        inicio.setHours(0, 0, 0, 0); 
-
-        const fin = new Date(fechaSeleccionada);
-        fin.setHours(23, 59, 59, 999); 
+        const inicio = `${fechaSeleccionada} 00:00:00`;
+        const fin = `${fechaSeleccionada} 23:59:59`;
 
         // CONSULTA BLINDADA (Copia fiel de tu lógica de reporte)
         const query = `*[_type == "venta" && (

@@ -33,11 +33,19 @@ export async function POST(request) {
             );
         }
 
+        const ahora = new Date();
+        const fechaBogota = ahora.toLocaleString("sv-SE", { 
+            timeZone: "America/Bogota",
+            hour12: false 
+        }).replace('T', ' '); 
+        // Resultado: "2026-02-19 21:45:00"
+
         const nuevoGasto = {
             _type: 'gasto',
             descripcion: descripcion,
-            monto: montoNumerico, // ✅ Ahora 2.000 o 2,000 se guarda como 2000
-            fecha: new Date().toISOString() // Fecha automática del sistema
+            monto: montoNumerico,
+            fecha: fechaBogota, // ✅ Ahora se guarda como texto local: "YYYY-MM-DD HH:mm:ss"
+            _createdAt_manual: ahora.toISOString() // Opcional: guardamos el ISO real como respaldo
         };
 
         const created = await sanityClientServer.create(nuevoGasto);

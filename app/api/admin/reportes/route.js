@@ -30,45 +30,38 @@ export async function POST(request) {
                 { status: 400 }
             );
         }
-
-        // 🕛 2. NORMALIZACIÓN DE FECHAS (CORTE REAL A MEDIANOCHE - COLOMBIA)
-        // Esto soluciona el problema de los "ceros" al asegurar el rango completo del día
-        const inicio = new Date(fechaInicio);
-        inicio.setHours(0, 0, 0, 0); 
-
-        const fin = new Date(fechaFin);
-        fin.setHours(23, 59, 59, 999); 
-
-        // 3. CONSULTA DE VENTAS (BLINDADA + COMPATIBLE CON TODO EL HISTORIAL)
-        // Buscamos en 'fechaLocal' (nuevo), 'fecha' (antiguo) y '_createdAt' (respaldo)
+       const inicio = fechaInicio; 
+        const fin = fechaFin; 
+        // finISO ayuda a Sanity a entender el límite del día en campos de sistema
+        const finISO = `${fechaFin.split(' ')[0]}T23:59:59Z`;
+        
         const queryVentas = `*[_type == "venta" && (
             (defined(fechaLocal) && fechaLocal >= $inicio && fechaLocal <= $fin) ||
-            (!defined(fechaLocal) && fecha >= $inicio && fecha <= $fin) ||
-            (_createdAt >= $inicio && _createdAt <= $fin)
+            (!defined(fechaLocal) && _createdAt >= $inicio && _createdAt <= $finISO)
         )]{
             "totalPagado": coalesce(totalPagado, 0),
             "propinaRecaudada": coalesce(propinaRecaudada, 0),
             mesero,
             metodoPago,
             platosVendidosV2,
-            fecha,
             fechaLocal,
             _createdAt
         }`;
 
         // 4. CONSULTA DE GASTOS
-        const queryGastos = `*[_type == "gasto" && (
-            fecha >= $inicio && fecha <= $fin ||
-            _createdAt >= $inicio && _createdAt <= $fin
+       const queryGastos = `*[_type == "gasto" && (
+            (fecha >= $inicio && fecha <= $fin) ||
+            (_createdAt >= $inicio && _createdAt <= $finISO)
         )]{
             "monto": coalesce(monto, 0),
             descripcion,
-            fecha
+            fecha,
+            _createdAt
         }`;
-
+        
         const [ventas, gastos] = await Promise.all([
-            sanityClientServer.fetch(queryVentas, { inicio, fin }, { useCdn: false }),
-            sanityClientServer.fetch(queryGastos, { inicio, fin }, { useCdn: false })
+            sanityClientServer.fetch(queryVentas, { inicio, fin, finISO }, { useCdn: false }),
+            sanityClientServer.fetch(queryGastos, { inicio, fin, finISO }, { useCdn: false })
         ]);
 
         // 📊 5. PROCESAMIENTO ESTRATÉGICO
