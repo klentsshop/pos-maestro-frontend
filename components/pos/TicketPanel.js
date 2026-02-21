@@ -57,7 +57,8 @@ export default function TicketPanel({
     actualizarComentario,
     propina = 0, setPropina, // 👈 Props para propina
     montoManual = 0, setMontoManual,
-    setMostrarModalHistorial // 👈 Props para monto manual
+    setMostrarModalHistorial,
+    setMostrarInventario // 👈 Props para monto manual
 }) {
     // 🔍 Mejora: Función para limpiar el emoji del título y evitar el doble icono
     const limpiarIconoDeTexto = (texto) => {
@@ -151,19 +152,19 @@ export default function TicketPanel({
         </select>
     </div>
     
-   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', padding: '6px 0' }}>
+   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', padding: '6px 0', justifyContent: 'center' }}>
     
-    {/* ÓRDENES */}
+    {/* 1. ÓRDENES */}
     <button 
         onClick={() => { refreshOrdenes(); setMostrarListaOrdenes(true); }} 
         style={{
-            flex: '0 0 calc(33.3333% - 6px)',
-            padding: 'clamp(8px, 2.4vw, 7px) clamp(4px, 1.5vw, 6px)',
+            flex: '0 0 31%',
+            padding: 'clamp(8px, 2.4vw, 7px) 2px',
             backgroundColor: '#9CA3AF',
             color: 'white',
             border: 'none',
             borderRadius: '6px',
-            fontSize: 'clamp(0.95rem, 2.8vw, 0.85rem)',
+            fontSize: 'clamp(0.85rem, 2.5vw, 0.75rem)',
             fontWeight: '900',
             cursor: 'pointer'
         }}
@@ -171,13 +172,13 @@ export default function TicketPanel({
         ÓRDENES ({numOrdenesActivas})
     </button>
 
-    {/* REPORTE */}
+    {/* 2. REPORTE */}
     <button 
         onClick={() => esModoCajero ? generarCierreDia() : alert("🔒 Solo el cajero puede ver reportes")} 
         style={{ 
-            flex: '0 0 calc(33.3333% - 6px)',
-            padding: 'clamp(8px, 2.4vw, 7px) clamp(4px, 1.5vw, 6px)',
-            fontSize: 'clamp(0.95rem, 2.8vw, 0.85rem)', 
+            flex: '0 0 31%',
+            padding: 'clamp(8px, 2.4vw, 7px) 2px',
+            fontSize: 'clamp(0.85rem, 2.5vw, 0.75rem)', 
             backgroundColor: esModoCajero ? SITE_CONFIG.theme.danger : '#4B5563', 
             color: 'white',
             border: 'none',
@@ -190,13 +191,13 @@ export default function TicketPanel({
         REPORTE
     </button>
 
-    {/* ADMIN */}
+    {/* 3. ADMIN */}
     <button 
         onClick={solicitarAccesoAdmin} 
         style={{
-            flex:'0 0 calc(33.3333% - 6px)',
-            padding: 'clamp(10px, 2.8vw, 8px) clamp(4px, 1.5vw, 6px)',
-            fontSize: 'clamp(0.95rem, 2.8vw, 0.85rem)',
+            flex: '0 0 31%',
+            padding: 'clamp(10px, 2.8vw, 8px) 2px',
+            fontSize: 'clamp(0.85rem, 2.5vw, 0.75rem)',
             backgroundColor: '#374151',
             color: 'white',
             border: 'none',
@@ -208,36 +209,31 @@ export default function TicketPanel({
         ADMIN
     </button>
 
-    {/* BORRAR: Solo aparece si hay una mesa cargada y es cajero */}
-    {ordenActivaId && esModoCajero && (
-        <button 
-            onClick={cancelarOrden} 
-            style={{
-                flex: '0 0 calc(33.3333% - 6px)', // Dividido en 3
-                padding: 'clamp(14px, 3.5vw, 10px) clamp(4px, 1.5vw, 6px)',
-                fontSize: 'clamp(0.85rem, 2.5vw, 0.75rem)',
-                backgroundColor: '#000',
-                color: SITE_CONFIG.theme.danger,
-                border: `1px solid ${SITE_CONFIG.theme.danger}`,
-                borderRadius: '6px',
-                fontWeight: '900',
-                cursor: 'pointer'
-            }}
-        >
-            BORRAR
-        </button>
-    )}
+    {/* 4. INVENTARIO */}
+    <button 
+    onClick={() => setMostrarInventario(true)} // 👈 Solo cambiamos esto
+    style={{
+        flex: '0 0 31%',
+        padding: 'clamp(14px, 3.5vw, 10px) 2px',
+        fontSize: 'clamp(0.85rem, 2.5vw, 0.75rem)',
+        backgroundColor: '#2563eb', // Tu azul de inventario
+        color: 'white',
+        border: 'none',
+        borderRadius: '6px',
+        fontWeight: '900',
+        cursor: 'pointer'
+    }}
+>
+    INVENTARIO
+</button>
 
-    {/* + GASTO */}
+    {/* 5. + GASTO */}
     <button 
         onClick={registrarGasto} 
         style={{
-            // Si hay mesa cargada se divide en 3, si no, se divide en 2 con Ventas
-            flex: ordenActivaId && esModoCajero
-                ? '0 0 calc(33.3333% - 6px)'
-                : '0 0 calc(50% - 6px)',
-            padding: 'clamp(14px, 3.5vw, 10px) clamp(4px, 1.5vw, 6px)',
-            fontSize: 'clamp(0.95rem, 2.8vw, 0.85rem)',
+            flex: '0 0 31%',
+            padding: 'clamp(14px, 3.5vw, 10px) 2px',
+            fontSize: 'clamp(0.85rem, 2.5vw, 0.75rem)',
             backgroundColor: SITE_CONFIG.theme.accent,
             color: 'white',
             border: 'none',
@@ -249,15 +245,13 @@ export default function TicketPanel({
         + GASTO
     </button>
 
-    {/* 🕒 VENTAS: Nuevo botón para el historial */}
+    {/* 6. VENTAS */}
     <button 
-        onClick={() => setMostrarModalHistorial(true)} // Función para abrir tu nuevo modal
+        onClick={() => setMostrarModalHistorial(true)} 
         style={{
-            flex: ordenActivaId && esModoCajero
-                ? '0 0 calc(33.3333% - 6px)'
-                : '0 0 calc(50% - 6px)',
-            padding: 'clamp(14px, 3.5vw, 10px) clamp(4px, 1.5vw, 6px)',
-            fontSize: 'clamp(0.95rem, 2.8vw, 0.85rem)',
+            flex: '0 0 31%',
+            padding: 'clamp(14px, 3.5vw, 10px) 2px',
+            fontSize: 'clamp(0.85rem, 2.5vw, 0.75rem)',
             backgroundColor: '#228B22', 
             color: 'white',
             border: 'none',
@@ -380,31 +374,106 @@ export default function TicketPanel({
                     <span>{SITE_CONFIG.brand.symbol}{total.toLocaleString(SITE_CONFIG.brand.currency)}</span>
                 </div>
 
-                <div style={{ display: 'flex', gap: '4px' }}>
-                    {cart.length > 0 && (
-                        <>
-                            
-                            <button onClick={imprimirTicket} 
-                                style={{ flex: 0.5, padding: '12px 2px', backgroundColor: SITE_CONFIG.theme.secondary, color: 'white', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.65rem', cursor: 'pointer' }}>
-                                🖨️ CLIENTE
-                            </button>
-                            <button onClick={imprimirComandaCocina} 
-                                style={{ flex: 0.5, padding: '12px 2px', backgroundColor: SITE_CONFIG.theme.dark, color: 'white', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.65rem', cursor: 'pointer' }}>
-                                👨‍🍳 COCINA
-                            </button>
-                        </>
-                    )}
-                    <button onClick={guardarOrden} 
-                     style={{ flex: 1, padding: '12px', backgroundColor: '#fbbf24', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.85rem', cursor: 'pointer' }}>
-                     {ordenActivaId ? 'ACTUALIZAR' : 'GUARDAR'}
-                   </button>
-                    {esModoCajero && ordenActivaId && (
-                    <button onClick={cobrarOrden} 
-                    style={{ flex: 1, padding: '12px', backgroundColor: SITE_CONFIG.theme.primary, color: 'white', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.85rem', cursor: 'pointer' }}>
-                    COBRAR
-                    </button>
-                    )}
-                </div>
+                <div style={{ display: 'flex', gap: '4px', width: '100%', alignItems: 'center' }}>
+    {/* 1. SECCIÓN IMPRESIÓN: Solo si hay algo en el carrito */}
+    {cart.length > 0 && (
+        <>
+            <button 
+                onClick={imprimirTicket} 
+                style={{ 
+                    flex: '0 0 16%', // Ajuste para que no empuje a los demás
+                    padding: '12px 1px', 
+                    backgroundColor: SITE_CONFIG.theme.secondary, 
+                    color: 'white', 
+                    border: 'none', 
+                    borderRadius: '6px', 
+                    fontWeight: '800', 
+                    fontSize: '0.60rem', 
+                    cursor: 'pointer' 
+                }}
+            >
+                CLIENTE
+            </button>
+            <button 
+                onClick={imprimirComandaCocina} 
+                style={{ 
+                    flex: '0 0 16%', 
+                    padding: '12px 1px', 
+                    backgroundColor: SITE_CONFIG.theme.dark, 
+                    color: 'white', 
+                    border: 'none', 
+                    borderRadius: '6px', 
+                    fontWeight: '800', 
+                    fontSize: '0.60rem', 
+                    cursor: 'pointer' 
+                }}
+            >
+                COCINA
+            </button>
+        </>
+    )}
+
+    {/* 2. BOTÓN BORRAR: Aparece solo si la mesa ya existe en Sanity (ordenActivaId) */}
+    {ordenActivaId && (
+        <button 
+            className={styles.btnNegro} 
+            onClick={cancelarOrden}
+            style={{ 
+                flex: '0 0 16%', 
+                padding: '12px 1px', 
+                backgroundColor: '#000', 
+                color: '#ff4444', 
+                border: '1px solid #ff4444', 
+                borderRadius: '6px', 
+                fontWeight: '800', 
+                fontSize: '0.60rem', 
+                cursor: 'pointer' 
+            }}
+        >
+            BORRAR
+        </button>
+    )}
+
+    {/* 3. BOTÓN GUARDAR / ACTUALIZAR: Siempre visible */}
+    <button 
+        onClick={guardarOrden} 
+        style={{ 
+            flex: '1', 
+            padding: '12px 2px', 
+            backgroundColor: '#fbbf24', 
+            color: 'white', 
+            border: 'none', 
+            borderRadius: '6px', 
+            fontWeight: '900', 
+            fontSize: '0.75rem', 
+            cursor: 'pointer',
+            minWidth: '0' // Evita que el texto largo rompa el layout
+        }}
+    >
+        {ordenActivaId ? 'ACTUALIZAR' : 'GUARDAR'}
+    </button>
+
+    {/* 4. BOTÓN COBRAR: Solo si es cajero y la orden ya está guardada */}
+    {esModoCajero && ordenActivaId && (
+        <button 
+            onClick={cobrarOrden} 
+            style={{ 
+                flex: '1', 
+                padding: '12px 2px', 
+                backgroundColor: SITE_CONFIG.theme.primary, 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: '6px', 
+                fontWeight: '900', 
+                fontSize: '0.75rem', 
+                cursor: 'pointer',
+                minWidth: '0'
+            }}
+        >
+            COBRAR
+        </button>
+    )}
+</div>
             </div>
         </div>
     );

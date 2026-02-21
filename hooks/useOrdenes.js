@@ -59,23 +59,59 @@ export function useOrdenes() {
     };
 
     // FUNCIÓN PARA ELIMINAR (Tras Cobro o Cancelación)
-    const eliminarOrden = async (ordenId) => {
-        if (!ordenId) return;
-        try {
-            const res = await fetch('/api/ordenes/delete', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ordenId }),
-            });
+   const eliminarOrden = async (ordenId) => {
+    if (!ordenId) return;
+    
+    // 1. Buscamos la orden en el estado local de SWR
+    const ordenAEliminar = ordenes.find(o => o._id === ordenId);
+
+    try {
+        // 🛡️ LÓGICA DE DEVOLUCIÓN MASIVA
+        if (ordenAEliminar && ordenAEliminar.platos) {
             
-            if (!res.ok) throw new Error("Error al eliminar");
-            
-            // Refrescar lista de mesas activas inmediatamente sin borrar el estado local
-            await mutate(); 
-        } catch (error) {
-            console.error("❌ Error al eliminar orden:", error);
+            // Mapeamos los platos al formato que espera la API
+            const platosParaDevolver = ordenAEliminar.platos
+                .filter(p => p.controlaInventario && p.insumoVinculado?._ref)
+                .map(p => ({
+                    insumos: [{ 
+                        _id: p.insumoVinculado._ref, 
+                        // Cantidad que usa el plato (ej: 0.5 o 1)
+                        cantidad: Number(p.cantidadADescontar) || 1 
+                    }],
+                    // Cantidad de platos que había en la mesa (ej: 3 gaseosas)
+                    cantidad: Number(p.cantidad) || 1
+                }));
+
+            // 🚀 Enviamos todo el bloque de una sola vez
+            if (platosParaDevolver.length > 0) {
+                await fetch('/api/inventario/devolver', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        items: platosParaDevolver 
+                    })
+                });
+            }
         }
-    };
+
+        // 2. Eliminación física de la orden en Sanity
+        const res = await fetch('/api/ordenes/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ordenId }),
+        });
+        
+        if (!res.ok) throw new Error("Error al eliminar la orden del servidor");
+        
+        // 3. Sincronizamos la UI
+        await mutate(); 
+        console.log("✅ Mesa borrada y stock recuperado.");
+
+    } catch (error) {
+        console.error("❌ Error en eliminarOrden:", error);
+        alert("Hubo un error al intentar borrar la mesa.");
+    }
+};
 
     return {
         ordenes,

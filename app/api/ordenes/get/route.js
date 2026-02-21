@@ -26,7 +26,10 @@ export async function POST(request) {
                     cantidad,
                     precioUnitario,
                     subtotal,
-                    comentario  
+                    comentario,
+                    controlaInventario,
+                    cantidadADescontar,
+                    insumoVinculado 
                 }
             }
         `;

@@ -23,11 +23,13 @@ import TicketPanel from '@/components/pos/TicketPanel';
 import ProductGrid from '@/components/pos/ProductGrid';
 import styles from './MenuPanel.module.css';
 import HistorialVentasModal from '@/components/modals/HistorialVentasModal';
+import InventarioModal from '@/components/modals/InventarioModal';
+import { useInventario } from '@/hooks/useInventario';
 
 export default function MenuPanel() {
     const { 
         items: cart, total, addProduct: agregarAlCarrito, decrease: quitarDelCarrito, 
-        metodoPago, setMetodoPago, setCartFromOrden, clear: clearCart, 
+        metodoPago, setMetodoPago, setCartFromOrden, clear: clearCart, clearWithStockReturn, 
         actualizarComentario, propina, setPropina, montoManual, setMontoManual 
     } = useCart();
 
@@ -46,6 +48,7 @@ export default function MenuPanel() {
     const [listaMeseros, setListaMeseros] = useState([]);
     const [busqueda, setBusqueda] = useState(''); // 🔍 Nuevo estado para el buscador
     const [mostrarModalHistorial, setMostrarModalHistorial] = useState(false);
+    const [mostrarInventario, setMostrarInventario] = useState(false);
 
     const rep = useReportes(getFechaBogota);
     const imp = useImpresion(cart); 
@@ -62,7 +65,7 @@ export default function MenuPanel() {
     });
 
     const ord = useOrdenHandlers({
-        cart, total, clearCart, setCartFromOrden, apiGuardar, apiEliminar, 
+        cart, total, clearCart, clearWithStockReturn, setCartFromOrden, apiGuardar, apiEliminar, 
         refreshOrdenes, ordenesActivas, esModoCajero: acc.esModoCajero, 
         setMostrarCarritoMobile, nombreMesero, setNombreMesero
     });
@@ -118,10 +121,19 @@ export default function MenuPanel() {
 
 // Función para limpiar platos y soltar la mesa (quita el modo "Actualizar")
     const manejarLimpiezaTotal = () => {
-        clearCart();           // Borra los platos
-        ord.setOrdenActivaId(null); // Suelta el ID de la mesa
-        ord.setOrdenMesa(null);     // Borra el nombre de la mesa
-    };
+    // 🛡️ Solo devolvemos stock si NO hay una orden activa de Sanity cargada
+    // Si ord.ordenActivaId es null, significa que es una orden nueva en el "Mostrador"
+    if (!ord.ordenActivaId) {
+        clearWithStockReturn(); 
+    } else {
+        // Si hay una orden activa, solo limpiamos la pantalla SIN devolver stock
+        clearCart(); 
+    }
+
+    // Soltamos la mesa visualmente
+    ord.setOrdenActivaId(null);
+    ord.setOrdenMesa(null);
+};
     return (
         <div className={styles.mainWrapper}>
             <div className={styles.posLayout}>
@@ -139,7 +151,7 @@ export default function MenuPanel() {
                    clearCart={manejarLimpiezaTotal} imprimirTicket={imp.imprimirCliente} 
                     actualizarComentario={actualizarComentario} imprimirComandaCocina={imp.imprimirCocina}
                     propina={propina} setPropina={setPropina} montoManual={montoManual} setMontoManual={setMontoManual}
-                    setMostrarModalHistorial={setMostrarModalHistorial}
+                    setMostrarModalHistorial={setMostrarModalHistorial} setMostrarInventario={setMostrarInventario}
                 />
 
                 <ProductGrid 
@@ -197,6 +209,10 @@ export default function MenuPanel() {
              isOpen={mostrarModalHistorial} 
              onClose={() => setMostrarModalHistorial(false)} 
              onReimprimir={handleReimprimirVenta}
+            />
+            <InventarioModal 
+            isOpen={mostrarInventario} 
+            onClose={() => setMostrarInventario(false)} 
             />
         </div>
     );

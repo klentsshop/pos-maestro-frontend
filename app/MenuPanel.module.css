@@ -457,4 +457,40 @@
 .productsGrid {
     padding-bottom: 100px; /* Para que la barra no tape el último chicharrón */
 }
+/* --- ESTILOS PARA MODALES (ADMIN, REPORTE, INVENTARIO) --- */
+.modalOverlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 15px;
+    z-index: 9999;
+}
+
+.modalContent {
+    background: white;
+    padding: 25px;
+    border-radius: 15px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+}
+
+.modalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.closeBtn {
+    font-size: 1.8rem;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: #666;
+}
 }

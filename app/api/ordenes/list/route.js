@@ -54,7 +54,10 @@ export async function POST(request) {
                 cantidad,
                 precioUnitario: precio,
                 subtotal: precio * cantidad,
-                comentario: p.comentario || ""
+                comentario: p.comentario || "",
+                controlaInventario: p.controlaInventario || false,
+                cantidadADescontar: p.cantidadADescontar || 0,
+                insumoVinculado: p.insumoVinculado || null
             };
         });
 

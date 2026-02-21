@@ -2,7 +2,7 @@
 import { useState } from 'react';
 
 export function useOrdenHandlers({
-    cart, total, clearCart, setCartFromOrden, 
+    cart, total, clearCart, clearWithStockReturn, setCartFromOrden, 
     apiGuardar, apiEliminar, refreshOrdenes,
     ordenesActivas, esModoCajero, setMostrarCarritoMobile,
     nombreMesero, setNombreMesero,
@@ -78,7 +78,10 @@ export function useOrdenHandlers({
         cantidad: i.cantidad, 
         precioUnitario: i.precioNum, 
         subtotal: i.precioNum * i.cantidad,
-        comentario: i.comentario || "" 
+        comentario: i.comentario || "",
+        controlaInventario: i.controlaInventario || false,
+        insumoVinculado: i.insumoVinculado || null,
+        cantidadADescontar: i.cantidadADescontar || 0
     }));
 
     const currentOrdenId = ordenActivaId;
@@ -182,7 +185,7 @@ export function useOrdenHandlers({
         if (confirm(`⚠️ ¿Eliminar orden de ${ordenMesa}?`)) {
             try {
                 await apiEliminar(ordenActivaId);
-                clearCart(); 
+                await clearWithStockReturn();
                 setOrdenActivaId(null); 
                 setOrdenMesa(null);
                 if (!esModoCajero) setNombreMesero(null);

@@ -18,12 +18,22 @@ export async function GET(request, { params }) {
     try {
         // Consulta GROQ: Trae el documento completo de la orden activa.
         // Importante: También trae el _id, que necesitaremos para eliminarla.
-        const query = `*[_type == "ordenActiva" && _id == $id][0] {
-            _id,
-            mesa,
-            fechaCreacion,
-            platosOrdenados
-        }`;
+       const query = `*[_type == "ordenActiva" && _id == $id][0] {
+    _id,
+    mesa,
+    fechaCreacion,
+    platosOrdenados[] {
+        _key,
+        nombrePlato,
+        cantidad,
+        precioUnitario,
+        subtotal,
+        comentario,
+        controlaInventario,
+        cantidadADescontar,
+        insumoVinculado
+    }
+}`;
         
         const orden = await sanityClientServer.fetch(query, { id: ordenId });
 
