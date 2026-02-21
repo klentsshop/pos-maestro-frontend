@@ -454,7 +454,7 @@ export default function TicketPanel({
     </button>
 
     {/* 4. BOTÓN COBRAR: Solo si es cajero y la orden ya está guardada */}
-    {esModoCajero && ordenActivaId && (
+    {esModoCajero && cart.length > 0 && (
         <button 
             onClick={cobrarOrden} 
             style={{ 
