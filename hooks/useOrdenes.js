@@ -24,6 +24,7 @@ export function useOrdenes() {
             const payload = {
                 ...ordenPayload,
                 estado: ordenPayload.estado || 'abierta',
+                metodoPago: ordenPayload.metodoPago || 'efectivo',
                 
                 // 🚀 AJUSTE CLAVE: Priorizamos el 'true' si viene del botón.
                 // Si ordenPayload.imprimirCliente es true, se queda true.

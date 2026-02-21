@@ -160,7 +160,7 @@ export function useOrdenHandlers({
                 body: JSON.stringify({ 
                     mesa: ordenMesa || "Mostrador", 
                     mesero: nombreMesero || "Caja", 
-                    metodoPago, 
+                    metodoPago: metodoPago,
                     totalPagado: Number(subtotalVenta),
                     propinaRecaudada: Number(valorPropina),
                     fechaLocal, 

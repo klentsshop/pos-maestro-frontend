@@ -27,6 +27,7 @@ export async function POST(request) {
             folio,
             mesa,
             mesero,
+            metodoPago,
             totalPagado,
             propinaRecaudada,
             fechaLocal,

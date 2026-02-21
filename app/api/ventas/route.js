@@ -11,7 +11,8 @@ export async function POST(req) {
         
         const mesa = payload.mesa || 'General';
         const mesero = payload.mesero || 'Personal General';
-        const metodoPago = payload.metodoPago || 'efectivo';
+       const metodoPagoRaw = payload.metodoPago || 'efectivo';
+        const metodoPago = metodoPagoRaw.toLowerCase().trim();
         const totalPagado = Number(payload.totalPagado) || 0;
         const propinaRecaudada = Number(payload.propinaRecaudada) || 0;
         const ordenId = payload.ordenId;
@@ -70,6 +71,7 @@ export async function POST(req) {
             _type: 'ticketCobro',
             mesa: mesa,
             mesero: mesero,
+            metodoPago: metodoPago,
             items: platosVenta.map(p => ({
                 _key: crypto.randomUUID(),
                 nombrePlato: p.nombrePlato,
