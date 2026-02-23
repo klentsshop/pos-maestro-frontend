@@ -77,9 +77,13 @@ export default function TicketPanel({
         >
             
             {/* 1. BOTÓN VOLVER (MÓVIL) */}
-            <div onClick={() => setMostrarCarritoMobile(false)} className={styles.closeCartMobile}>
-                ▼ TOCAR PARA VOLVER A LOS PLATOS
-            </div>
+            <div 
+    onClick={() => setMostrarCarritoMobile(false)} 
+    className={styles.closeCartMobile}
+    style={{ padding: '25px 10px', textAlign: 'center', backgroundColor: '#000000' }}
+>
+    ▼ TOCAR PARA VOLVER A LOS PLATOS
+</div>
 
 {/* 2. CABECERA - ROLES Y MESEROS */}
 <div style={{ padding: 'clamp(10px, 2vw, 8px) clamp(14px, 3vw, 12px)', background: SITE_CONFIG.theme.dark, color: 'white', flexShrink: 0 }}>
@@ -102,30 +106,33 @@ export default function TicketPanel({
 
             {cart.length > 0 && (
                 <button 
-                    onClick={() => {
-                        if (typeof clearCart === 'function') {
-                            clearCart(); 
-                            if (typeof setNombreMesero === 'function') setNombreMesero(null);
-                        }
-                    }}
-                    title="Nueva Orden (Limpiar pantalla)"
-                    style={{
-                        width: 'clamp(32px, 6vw, 22px)',
-                        height: 'clamp(32px, 6vw, 22px)',
-                        borderRadius: '50%',
-                        backgroundColor: '#4B5563',
-                        color: 'white',
-                        border: 'none',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: 'clamp(14px, 3vw, 12px)',
-                        fontWeight: 'bold'
-                    }}
-                >
-                    ✕
-                </button>
+    onClick={() => {
+        if (typeof clearCart === 'function') {
+            clearCart(); 
+            if (typeof setNombreMesero === 'function') setNombreMesero(null);
+        }
+    }}
+    title="Nueva Orden (Limpiar pantalla)"
+    style={{
+        width: '65px',            // Más ancho para que respire
+        height: '45px',           // Un poco más bajo para estilo "cápsula"
+        borderRadius: '25px',     // Bordes totalmente redondeados
+        backgroundColor: '#E5E7EB', // Gris claro profesional (Apple Style)
+        color: '#374151',         // Icono en gris oscuro
+        border: '1px solid #D1D5DB', // Borde sutil
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '22px',         // Emoji un pelín más pequeño para que no toque los bordes
+        boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+        touchAction: 'manipulation',
+        marginLeft: '10px'
+    }}
+>
+    🧹
+</button>
+
             )}
         </div>
 
