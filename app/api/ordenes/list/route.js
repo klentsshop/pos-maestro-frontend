@@ -30,6 +30,7 @@ export async function GET() {
 /**
  * CREAR O ACTUALIZAR ORDEN
  * Optimizada para evitar duplicados y procesar solo la comanda de cocina.
+ * Incluye motor de popularidad inteligente para ranking en el POS.
  */
 export async function POST(request) {
     try {
@@ -43,13 +44,14 @@ export async function POST(request) {
             );
         }
 
-        // 1. Normalización de platos (Lógica de negocio intacta)
+        // 1. Normalización de platos (Lógica de negocio e inventario intacta)
         const platosNormalizados = platosOrdenados.map(p => {
             const cantidad = Number(p.cantidad) || 1;
             const precio = Number(p.precioUnitario || p.precioNum) || 0; 
 
             return {
                 _key: p._key || p.lineId || Math.random().toString(36).substring(2, 9), 
+                _id: p._id, // Preservamos el ID para referencia
                 nombrePlato: p.nombrePlato || p.nombre, 
                 cantidad,
                 precioUnitario: precio,
@@ -63,8 +65,7 @@ export async function POST(request) {
 
         const fechaActual = new Date().toISOString();
         
-        // 🚀 LIMPIEZA: Solo mantenemos imprimirSolicitada (Cocina) que sí funciona bien.
-        // El interruptor de Cliente se maneja ahora por el Historial de Ventas.
+        // 🚀 LIMPIEZA: Solo mantenemos imprimirSolicitada (Cocina)
         const valorSolicitada = body.imprimirSolicitada === true;
 
         // 🛡️ ESCUDO ANTI-DUPLICADOS (Blindaje de ID y Mesa)
@@ -78,50 +79,72 @@ export async function POST(request) {
             if (mesaPrevia) idDestino = mesaPrevia;
         }
 
+        let responseData;
+
         if (idDestino) {
             // ACTUALIZAR (PATCH) - Evita crear mesas fantasmales
-            try {
-                const updated = await sanityClientServer
-                    .patch(idDestino)
-                    .set({
-                        mesa,
-                        mesero,
-                        platosOrdenados: platosNormalizados,
-                        ultimaActualizacion: fechaActual,
-                        imprimirSolicitada: valorSolicitada,
-                        // 🗑️ Eliminamos 'imprimirCliente' de aquí para evitar conflictos de escritura
-                    })
-                    .commit();
+            const updated = await sanityClientServer
+                .patch(idDestino)
+                .set({
+                    mesa,
+                    mesero,
+                    platosOrdenados: platosNormalizados,
+                    ultimaActualizacion: fechaActual,
+                    imprimirSolicitada: valorSolicitada,
+                })
+                .commit();
 
-                return NextResponse.json({
-                    message: 'Orden actualizada',
-                    ordenId: updated._id
-                });
-            } catch (patchError) {
-                console.warn('⚠️ Fallo en Patch, reintentando como creación.');
-            }
-        }
+            responseData = {
+                message: 'Orden actualizada',
+                ordenId: updated._id
+            };
+        } else {
+            // CREAR NUEVA (Solo si la mesa realmente no existe)
+            const nuevaOrden = {
+                _type: 'ordenActiva',
+                mesa,
+                mesero,
+                fechaCreacion: fechaActual,
+                ultimaActualizacion: fechaActual,
+                platosOrdenados: platosNormalizados,
+                imprimirSolicitada: valorSolicitada
+            };
 
-        // CREAR NUEVA (Solo si la mesa realmente no existe)
-        const nuevaOrden = {
-            _type: 'ordenActiva',
-            mesa,
-            mesero,
-            fechaCreacion: fechaActual,
-            ultimaActualizacion: fechaActual,
-            platosOrdenados: platosNormalizados,
-            imprimirSolicitada: valorSolicitada
-        };
+            const created = await sanityClientServer.create(nuevaOrden);
 
-        const created = await sanityClientServer.create(nuevaOrden);
-
-        return NextResponse.json(
-            {
+            responseData = {
                 message: 'Orden creada',
                 ordenId: created._id
-            },
-            { status: 201 }
-        );
+            };
+        }
+
+        // 🔥 🚀 MOTOR DE POPULARIDAD (Orden Inteligente)
+        // Ejecutamos esto de forma asíncrona al final para NO bloquear el retorno al mesero
+        try {
+            const promesasPopularidad = platosOrdenados.map(p => {
+                const platoId = p._id || p.id || p.platoId;
+
+                // 🛡️ Si no hay ID, saltamos este plato sin romper la ejecución
+                if (!platoId) return Promise.resolve();
+
+                return sanityClientServer
+                    .patch(platoId)
+                    .setIfMissing({ totalVentas: 0 })
+                    .inc({ totalVentas: Number(p.cantidad) || 1 })
+                    .commit()
+                    .catch(e => console.error("Error en patch de popularidad individual:", e.message));
+            });
+            
+            // Disparamos las promesas sin 'await' para que el mesero reciba su respuesta YA
+            Promise.allSettled(promesasPopularidad);
+
+        } catch (errPop) {
+            // Error en popularidad no debe afectar el éxito del pedido
+            console.error('❌ [POPULARIDAD_SILENCIOSA]:', errPop.message);
+        }
+
+        // Retornamos el éxito de la operación principal (Guardar Mesa)
+        return NextResponse.json(responseData, { status: idDestino ? 200 : 201 });
 
     } catch (error) {
         console.error('🔥 [API_LIST_POST_ERROR]:', error);

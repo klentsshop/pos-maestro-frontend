@@ -138,7 +138,11 @@ export default function TicketPanel({
 
         <select 
             value={nombreMesero || ""} 
-            onChange={(e) => setNombreMesero(e.target.value)}
+            onChange={(e) => {
+            setNombreMesero(e.target.value);
+            // Guardamos en localStorage para que no se pierda al recargar
+             localStorage.setItem('ultimoMesero', e.target.value);
+            }}
             style={{ 
                 padding: 'clamp(8px, 2vw, 4px) clamp(10px, 2.5vw, 6px)',
                 borderRadius: '6px',

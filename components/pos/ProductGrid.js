@@ -11,6 +11,34 @@ export default function ProductGrid({
 }) {
     const listaCategorias = ['todos', ...new Set(platos.map(p => p.categoria))];
 
+// 🔥 2. LÓGICA DE ORDENAMIENTO INTELIGENTE (PROFESIONAL)
+    // Usamos useMemo para ordenar los platos por popularidad (totalVentas) 
+    // solo cuando estemos en la vista "todos" y no haya una búsqueda activa.
+    // 🔥 REEMPLAZA ESTE BLOQUE EN TU PRODUCTGRID
+const platosFinales = React.useMemo(() => {
+    // Si hay una búsqueda activa, NO ordenamos por popularidad para no marear al mesero
+    if (busqueda.trim() !== "") return platosFiltrados;
+
+    // Solo aplicamos el Orden Inteligente en la categoría "todos"
+    if (categoriaActiva === 'todos') {
+        return [...platosFiltrados].sort((a, b) => {
+            // 🛡️ BLINDAJE TOTAL: Convertimos a número y forzamos 0 si es null/nulo
+            const ventasA = Number(a.totalVentas) || 0;
+            const ventasB = Number(b.totalVentas) || 0;
+
+            // Ordenar de Mayor a Menor
+            if (ventasB !== ventasA) {
+                return ventasB - ventasA;
+            }
+            
+            // Si las ventas son iguales, ordenamos alfabéticamente para que sea estable
+            return a.nombre.localeCompare(b.nombre);
+        });
+    }
+
+    // En categorías específicas, mantenemos el orden por nombre (nombre asc)
+    return platosFiltrados;
+}, [platosFiltrados, busqueda, categoriaActiva]);
     return (
         <div className={styles.menuPanel}>
             {/* BOTONES DE NAVEGACIÓN SUPERIOR (MÓVIL) */}
@@ -72,7 +100,7 @@ export default function ProductGrid({
 
             {/* Cuadrícula de Platos con Diseño Split */}
             <div className={styles.productsGrid}>
-                {platosFiltrados.map(plato => (
+                {platosFinales.map(plato => (
                     <div key={plato._id} className={styles.productCard} onClick={() => agregarAlCarrito(plato)}>
                         {/* 1. Área de Imagen */}
                         <div 
@@ -148,6 +176,7 @@ export default function ProductGrid({
                    )}
                 </div>
             )}
+            
         </div>
     );
 }

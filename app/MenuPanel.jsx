@@ -139,12 +139,13 @@ export default function MenuPanel() {
             <div className={styles.posLayout}>
                 <TicketPanel 
                     cart={cart} total={total} metodoPago={metodoPago} setMetodoPago={setMetodoPago}
-                    quitarDelCarrito={quitarDelCarrito} guardarOrden={ord.guardarOrden} cobrarOrden={() => ord.cobrarOrden(metodoPago)}
+                    quitarDelCarrito={quitarDelCarrito} guardarOrden={ord.guardarOrden} errorMesaOcupada={ord.errorMesaOcupada}
+                    setErrorMesaOcupada={ord.setErrorMesaOcupada}cobrarOrden={() => ord.cobrarOrden(metodoPago)}
                     generarCierreDia={rep.generarCierreDia} solicitarAccesoCajero={acc.solicitarAccesoCajero}
                     solicitarAccesoAdmin={acc.solicitarAccesoAdmin} registrarGasto={gst.registrarGasto}
                     refreshOrdenes={refreshOrdenes} setMostrarListaOrdenes={setMostrarListaOrdenes}
                     mostrarCarritoMobile={mostrarCarritoMobile} setMostrarCarritoMobile={setMostrarCarritoMobile}
-                    ordenMesa={ord.ordenMesa} nombreMesero={nombreMesero} setNombreMesero={setNombreMesero}
+                    ordenMesa={ord.ordenMesa} nombreMesero={ord.nombreMesero || nombreMesero} setNombreMesero={ord.setNombreMesero || setNombreMesero}
                     listaMeseros={listaMeseros} esModoCajero={acc.esModoCajero}
                     ordenActivaId={ord.ordenActivaId} numOrdenesActivas={ordenesActivas.length} 
                     cleanPrice={cleanPrice} styles={styles} cancelarOrden={ord.cancelarOrden} 
@@ -214,6 +215,31 @@ export default function MenuPanel() {
             isOpen={mostrarInventario} 
             onClose={() => setMostrarInventario(false)} 
             />
+            {/* 🚨 BLOQUEO TOTAL DISUASIVO */}
+            {ord.errorMesaOcupada && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+                    backgroundColor: '#dc2626', zIndex: 99999, display: 'flex',
+                    flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
+                    color: 'white', textAlign: 'center', padding: '20px'
+                }}>
+                    <span style={{ fontSize: '5rem' }}>⚠️</span>
+                    <h1 style={{ fontSize: '3rem', fontWeight: '900' }}>MESA OCUPADA</h1>
+                    <p style={{ fontSize: '1.5rem' }}>
+                        La mesa <strong>{ord.errorMesaOcupada}</strong> ya tiene un pedido activo.
+                    </p>
+                    <button 
+                        onClick={() => ord.setErrorMesaOcupada(null)}
+                        style={{
+                            marginTop: '25px', padding: '15px 40px', backgroundColor: 'white',
+                            color: '#dc2626', border: 'none', borderRadius: '50px',
+                            fontWeight: '900', fontSize: '1.2rem', cursor: 'pointer'
+                        }}
+                    >
+                        Dale Guardar Nuevamente, Con otro Nombre
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

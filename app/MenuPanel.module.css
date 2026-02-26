@@ -193,7 +193,7 @@
         /* AJUSTE 1: Aumentamos padding inferior para que las categorías del final sean visibles */
         padding: 70px 20px 100px 20px !important; 
         
-        z-index: 5000 !important;
+        z-index: 4000 !important;
         transition: right 0.3s ease;
         box-shadow: -5px 0 15px rgba(0,0,0,0.1);
         border-bottom: none !important;
@@ -293,7 +293,7 @@
         border-bottom: 1px solid #eee;
         position: sticky;
         top: 0;
-        z-index: 4600; /* Por encima de los botones flotantes pero debajo de modales */
+        z-index: 5000; /* Por encima de los botones flotantes pero debajo de modales */
     }
 
     /* Sobrescribimos los botones flotantes originales para que encajen en el header */
@@ -492,5 +492,35 @@
     background: none;
     cursor: pointer;
     color: #666;
+}
+.bloqueoMesaOcupada {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: #dc2626; /* Rojo Alerta */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 99999;
+    color: white;
+    font-family: sans-serif;
+    text-align: center;
+    padding: 20px;
+}
+
+.botonCerrarBloqueo {
+    margin-top: 30px;
+    padding: 15px 40px;
+    background-color: white;
+    color: #dc2626;
+    border: none;
+    border-radius: 50px;
+    font-weight: 900;
+    font-size: 1.2rem;
+    cursor: pointer;
+    text-transform: uppercase;
 }
 }

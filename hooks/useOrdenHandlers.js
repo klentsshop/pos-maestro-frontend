@@ -36,7 +36,8 @@ export function useOrdenHandlers({
             if (o && o.platosOrdenados) {
                 setOrdenActivaId(o._id); 
                 setOrdenMesa(o.mesa); 
-                setNombreMesero(o.mesero || (esModoCajero ? "Caja" : null)); 
+                // Cambia la línea del mesero por esta versión "blindada":
+                setNombreMesero(o.mesero || o.nombreMesero || localStorage.getItem('ultimoMesero') || (esModoCajero ? "Caja" : null)); 
                 setCartFromOrden(o.platosOrdenados); 
                 setMostrarCarritoMobile(true);
                 return true;
@@ -50,86 +51,97 @@ export function useOrdenHandlers({
     // ==============================
     // GUARDAR ORDEN (MESA)
     // ==============================
-    const guardarOrden = async (opciones = {}) => {
-        // Validación de carrito vacío
-        if (cart.length === 0) return;
+    const [errorMesaOcupada, setErrorMesaOcupada] = useState(null);
 
-        let mesaDefault = esModoCajero ? "Mostrador" : "Mesa 1";
-        let mesa = ordenMesa || prompt("Mesa o Cliente:", mesaDefault);
-        if (!mesa) return;
+const guardarOrden = async (opciones = {}) => {
+    // 1. Validación de carrito vacío (Original)
+    if (cart.length === 0) return;
 
-        // Escudo Anti-Duplicados
-        if (!ordenActivaId) {
-            const existe = ordenesActivas.find(
-                (o) => o.mesa.toLowerCase() === mesa.trim().toLowerCase()
-            );
+    let mesaDefault = esModoCajero ? "Mostrador" : "Mesa 1";
+    let mesa = ordenMesa || prompt("Mesa o Cliente:", mesaDefault);
+    if (!mesa) return;
 
-            if (existe) {
-                const deseaCargar = confirm(`La [${mesa}] ya tiene una orden activa. ¿Deseas cargarla para añadir más productos?`);
-                if (deseaCargar) {
-                    cargarOrden(existe._id); 
-                    return; 
-                } else {
-                    alert("Operación cancelada. Para evitar duplicados, usa un nombre de mesa diferente.");
-                    return; 
-                }
-            }
+    // --- ESCUDO DE BLOQUEO POR NÚMERO (INTELIGENTE) ---
+    if (!ordenActivaId) {
+        // Extraemos solo los números de lo que escribió el mesero (ej: "Mesa 5" -> "5")
+        const soloNumerosNuevos = mesa.match(/\d+/g)?.join("");
+
+        const existe = ordenesActivas.find((o) => {
+            const nombreExistente = o.mesa.toLowerCase().trim();
+            const nombreNuevo = mesa.toLowerCase().trim();
+            
+            // Extraemos solo los números de la mesa que ya está abierta
+            const soloNumerosExistentes = o.mesa.match(/\d+/g)?.join("");
+
+            // BLOQUEO SI: El nombre es idéntico O si los números coinciden (ej: "5" vs "Mesa 5")
+            const coincidenciaTexto = nombreExistente === nombreNuevo;
+            const coincidenciaNumero = soloNumerosNuevos && soloNumerosExistentes && (soloNumerosNuevos === soloNumerosExistentes);
+
+            return coincidenciaTexto || coincidenciaNumero;
+        });
+
+        if (existe) {
+            // Activa el muro rojo agresivo y detiene todo
+            setErrorMesaOcupada(mesa); 
+            return; 
         }
+    }
+    // --- FIN DEL ESCUDO ---
 
-        let meseroFinal = nombreMesero || localStorage.getItem('ultimoMesero') || (esModoCajero ? "Caja" : null);
+    let meseroFinal = nombreMesero || localStorage.getItem('ultimoMesero') || (esModoCajero ? "Caja" : null);
+    
+    if (!meseroFinal) {
+        alert("⚠️ Por favor, selecciona un mesero antes de guardar la orden.");
+        return;
+    }
+
+    localStorage.setItem('ultimoMesero', meseroFinal);
+
+    // Mapeo de platos con lógica de INVENTARIO (Línea a línea igual a tu original, preservada 100%)
+    const platosParaGuardar = cart.map(i => ({ 
+        _id: i._id,
+        _key: i._key || i.lineId || Math.random().toString(36).substring(2, 9), 
+        nombrePlato: i.nombre, 
+        cantidad: i.cantidad, 
+        precioUnitario: i.precioNum, 
+        subtotal: i.precioNum * i.cantidad,
+        comentario: i.comentario || "",
+        controlaInventario: i.controlaInventario || false,
+        insumoVinculado: i.insumoVinculado || null,
+        cantidadADescontar: i.cantidadADescontar || 0
+    }));
+
+    const currentOrdenId = ordenActivaId;
+
+    try {
+        if (typeof setMensajeExito === 'function') setMensajeExito(true);
+        setMostrarCarritoMobile(false);
+
+        await apiGuardar({ 
+            mesa: mesa.trim(), 
+            mesero: meseroFinal, 
+            ordenId: currentOrdenId, 
+            platosOrdenados: platosParaGuardar,
+            imprimirSolicitada: true, 
+            ultimaActualizacion: new Date().toISOString()
+        });
         
-        if (!meseroFinal) {
-            alert("⚠️ Por favor, selecciona un mesero antes de guardar la orden.");
-            return;
-        }
+        await refreshOrdenes();
 
-        localStorage.setItem('ultimoMesero', meseroFinal);
-
-        // Mapeo de platos con lógica de INVENTARIO preservada
-        const platosParaGuardar = cart.map(i => ({ 
-            _key: i._key || i.lineId || Math.random().toString(36).substring(2, 9), 
-            nombrePlato: i.nombre, 
-            cantidad: i.cantidad, 
-            precioUnitario: i.precioNum, 
-            subtotal: i.precioNum * i.cantidad,
-            comentario: i.comentario || "",
-            controlaInventario: i.controlaInventario || false,
-            insumoVinculado: i.insumoVinculado || null,
-            cantidadADescontar: i.cantidadADescontar || 0
-        }));
-
-        const currentOrdenId = ordenActivaId;
-
-        try {
-            if (typeof setMensajeExito === 'function') setMensajeExito(true);
-            setMostrarCarritoMobile(false);
-
-            await apiGuardar({ 
-                mesa: mesa.trim(), 
-                mesero: meseroFinal, 
-                ordenId: currentOrdenId, 
-                platosOrdenados: platosParaGuardar,
-                imprimirSolicitada: true, 
-                ultimaActualizacion: new Date().toISOString()
-            });
-
-            await refreshOrdenes();
-
-            setTimeout(() => {
-                if (typeof setMensajeExito === 'function') setMensajeExito(false);
-                setOrdenActivaId(null); 
-                setOrdenMesa(null); 
-                clearCart(); 
-                if (meseroFinal) setNombreMesero(meseroFinal);
-            }, 1500);
-
-        } catch (e) { 
-            console.error("🔥 [ERROR_GUARDAR_ORDEN]:", e);
+        setTimeout(() => {
             if (typeof setMensajeExito === 'function') setMensajeExito(false);
-            alert("❌ Error crítico: La conexión con Sanity falló."); 
-        }
-    };
+            setOrdenActivaId(null); 
+            setOrdenMesa(null); 
+            clearCart(); 
+            if (meseroFinal) setNombreMesero(meseroFinal);
+        }, 1500);
 
+    } catch (e) { 
+        console.error("🔥 [ERROR_GUARDAR_ORDEN]:", e);
+        if (typeof setMensajeExito === 'function') setMensajeExito(false);
+        alert("❌ Error crítico: La conexión con Sanity falló."); 
+    }
+};
     // ==============================
     // COBRAR ORDEN (VENTA DIRECTA)
     // ==============================
@@ -226,7 +238,11 @@ export function useOrdenHandlers({
     return { 
         ordenActivaId, 
         ordenMesa, 
+        nombreMesero,    
+        setNombreMesero,
         cargarOrden, 
+        errorMesaOcupada,     
+        setErrorMesaOcupada,
         guardarOrden, 
         cobrarOrden, 
         cancelarOrden,
