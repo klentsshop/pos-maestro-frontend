@@ -99,17 +99,19 @@ const guardarOrden = async (opciones = {}) => {
 
     // Mapeo de platos con lógica de INVENTARIO (Línea a línea igual a tu original, preservada 100%)
     const platosParaGuardar = cart.map(i => ({ 
-        _id: i._id,
-        _key: i._key || i.lineId || Math.random().toString(36).substring(2, 9), 
-        nombrePlato: i.nombre, 
-        cantidad: i.cantidad, 
-        precioUnitario: i.precioNum, 
-        subtotal: i.precioNum * i.cantidad,
-        comentario: i.comentario || "",
-        controlaInventario: i.controlaInventario || false,
-        insumoVinculado: i.insumoVinculado || null,
-        cantidadADescontar: i.cantidadADescontar || 0
-    }));
+    _id: i._id,
+    // ✅ CORREGIDO: Se cerró la plantilla ` y el paréntesis )
+    _key: i._key || i.lineId || `new-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`, 
+    
+    nombrePlato: i.nombre, 
+    cantidad: i.cantidad, 
+    precioUnitario: i.precioNum, 
+    subtotal: i.precioNum * i.cantidad,
+    comentario: i.comentario || "",
+    controlaInventario: i.controlaInventario || false,
+    insumoVinculado: i.insumoVinculado || null,
+    cantidadADescontar: i.cantidadADescontar || 0
+}));
 
     const currentOrdenId = ordenActivaId;
 
