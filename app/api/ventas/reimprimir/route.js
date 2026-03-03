@@ -4,9 +4,11 @@ export async function POST(req) {
     try {
         const { venta } = await req.json();
         
-        // 🧮 CALCULO DE SEGURIDAD PARA LA APK:
-        // Aseguramos que el total que viaja al ticket incluya la propina
-        const totalConPropina = Number(venta.totalPagado || 0) + Number(venta.propinaRecaudada || 0);
+        // 🧮 AJUSTE PARA LA APK ACTUAL:
+        // Como la APK ya suma la propina internamente, enviamos el neto
+        // El Historial nos manda el total sumado, así que aquí restamos la propina.
+        const valorPropina = Number(venta.propinaRecaudada || 0);
+        const valorNetoComida = Number(venta.totalPagado || 0) - valorPropina;
 
         const objetoTicket = {
             _type: 'ticketCobro', 
@@ -20,9 +22,9 @@ export async function POST(req) {
                 precio: p.precioUnitario,
                 subtotal: p.subtotal,
             })),
-            // ✅ AHORA SÍ: Enviamos el valor sumado para que la APK no reste de más
-            totalPagado: totalConPropina,
-            propinaRecaudada: Number(venta.propinaRecaudada || 0),
+            // ✅ ENVIAMOS EL NETO: La APK le sumará la propina automáticamente
+            totalPagado: valorNetoComida,
+            propinaRecaudada: valorPropina,
             
             imprimirSolicitada: true, 
             imprimirCliente: true,    
