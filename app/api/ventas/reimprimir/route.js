@@ -4,11 +4,10 @@ export async function POST(req) {
     try {
         const { venta } = await req.json();
         
-        // 🧮 AJUSTE PARA LA APK ACTUAL:
-        // Como la APK ya suma la propina internamente, enviamos el neto
-        // El Historial nos manda el total sumado, así que aquí restamos la propina.
+        // 🧮 LÓGICA DE SUMA REAL (VALORES DE VISION):
         const valorPropina = Number(venta.propinaRecaudada || 0);
-        const valorNetoComida = Number(venta.totalPagado || 0) - valorPropina;
+        const valorNetoComida = Number(venta.totalPagado || 0);
+        const granTotalReal = valorNetoComida + valorPropina;
 
         const objetoTicket = {
             _type: 'ticketCobro', 
@@ -22,8 +21,14 @@ export async function POST(req) {
                 precio: p.precioUnitario,
                 subtotal: p.subtotal,
             })),
-            // ✅ ENVIAMOS EL NETO: La APK le sumará la propina automáticamente
-            totalPagado: valorNetoComida,
+
+            // 🎯 ETIQUETAS PARA LA APK (Pintará los datos de Vision):
+            subtotal: valorNetoComida,   // Pintará el neto (ej: 65000)
+            propina: valorPropina,       // Pintará la propina (ej: 6500)
+            total: granTotalReal,        // Pintará la suma real (ej: 71500)
+
+            // ✅ CAMPOS PARA SANITY:
+            totalPagado: granTotalReal,
             propinaRecaudada: valorPropina,
             
             imprimirSolicitada: true, 
