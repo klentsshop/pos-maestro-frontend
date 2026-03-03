@@ -13,11 +13,10 @@ export async function POST(request) {
         }
 
         // 🕛 NORMALIZACIÓN IDÉNTICA A TU API ADMIN (Corte Colombia)
-        // Esto asegura que si buscas "hoy", tome desde las 00:00 hasta las 23:59
         const inicio = `${fechaSeleccionada} 00:00:00`;
         const fin = `${fechaSeleccionada} 23:59:59`;
 
-        // CONSULTA BLINDADA (Copia fiel de tu lógica de reporte)
+        // CONSULTA BLINDADA
         const query = `*[_type == "venta" && (
             (defined(fechaLocal) && fechaLocal >= $inicio && fechaLocal <= $fin) ||
             (!defined(fechaLocal) && fecha >= $inicio && fecha <= $fin) ||
@@ -34,9 +33,16 @@ export async function POST(request) {
             platosVendidosV2
         }`;
 
-        const ventas = await sanityClientServer.fetch(query, { inicio, fin }, { useCdn: false });
+        const ventasRaw = await sanityClientServer.fetch(query, { inicio, fin }, { useCdn: false });
 
-        return NextResponse.json(ventas || []);
+        // ✅ CORRECCIÓN: Normalizamos los datos antes de enviarlos al frontend
+        const ventas = (ventasRaw || []).map(v => ({
+            ...v,
+            // Sumamos la propina al total para que el ticket y el visual muestren el gran total
+            totalPagado: Number(v.totalPagado || 0) + Number(v.propinaRecaudada || 0)
+        }));
+
+        return NextResponse.json(ventas);
     } catch (error) {
         console.error('[HISTORIAL_VENTAS_ERROR]:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
