@@ -4,10 +4,13 @@ export async function POST(req) {
     try {
         const { venta } = await req.json();
         
-        // 🧮 LÓGICA DE SUMA REAL (VALORES DE VISION):
+        // 1. EL GRAN TOTAL ya viene sumado desde tu API de Historial
+        const granTotal = Number(venta.totalPagado || 0); 
         const valorPropina = Number(venta.propinaRecaudada || 0);
-        const valorNetoComida = Number(venta.totalPagado || 0);
-        const granTotalReal = valorNetoComida + valorPropina;
+        
+        // 2. EL NETO (Comida) es la resta del total que mandó el historial menos la propina
+        // Así la suma en el papel (Neto + Propina) dará el Total correcto.
+        const valorNetoComida = granTotal - valorPropina;
 
         const objetoTicket = {
             _type: 'ticketCobro', 
@@ -22,13 +25,13 @@ export async function POST(req) {
                 subtotal: p.subtotal,
             })),
 
-            // 🎯 ETIQUETAS PARA LA APK (Pintará los datos de Vision):
-            subtotal: valorNetoComida,   // Pintará el neto (ej: 65000)
-            propina: valorPropina,       // Pintará la propina (ej: 6500)
-            total: granTotalReal,        // Pintará la suma real (ej: 71500)
+            // 🎯 ETIQUETAS PARA LA APK (Pintará los datos desglosados correctamente)
+            subtotal: valorNetoComida,   // La comida sola
+            propina: valorPropina,       // La propina sola
+            total: granTotal,            // El total que viste en el historial
 
-            // ✅ CAMPOS PARA SANITY:
-            totalPagado: granTotalReal,
+            // ✅ CAMPOS PARA SANITY (Mantener histórico)
+            totalPagado: granTotal,
             propinaRecaudada: valorPropina,
             
             imprimirSolicitada: true, 

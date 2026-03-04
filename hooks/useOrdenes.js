@@ -1,4 +1,4 @@
-import useSWR from 'swr';
+import useSWR, { mutate as mutateGlobal } from 'swr';
 import { useState } from 'react';
 
 const fetcher = (url) => fetch(url).then((res) => {
@@ -7,16 +7,18 @@ const fetcher = (url) => fetch(url).then((res) => {
 });
 
 export function useOrdenes() {
-    // ✅ Sincronización Real-Time: SWR consulta al servidor cada 5 segundos.
+    // ✅ Sincronización Profesional: 7 segundos para ahorro base.
     const { data: ordenes = [], mutate, error } = useSWR('/api/ordenes/list', fetcher, {
-        refreshInterval: 5000, 
+        refreshInterval: 7000, 
         revalidateOnFocus: true,
-        revalidateOnReconnect: true
+        revalidateOnReconnect: true,
+        dedupingInterval: 2000,
+        focusThrottleInterval: 2000 
     });
 
     const [cargandoAccion, setCargandoAccion] = useState(false);
 
-    // FUNCIÓN PARA GUARDAR O ACTUALIZAR
+    // FUNCIÓN PARA GUARDAR O ACTUALIZAR (Lógica original 100% preservada)
     const guardarOrden = async (ordenPayload) => {
         setCargandoAccion(true);
         try {
@@ -26,8 +28,7 @@ export function useOrdenes() {
                 estado: ordenPayload.estado || 'abierta',
                 metodoPago: ordenPayload.metodoPago || 'efectivo',
                 
-                // 🚀 AJUSTE CLAVE: Priorizamos el 'true' si viene del botón.
-                // Si ordenPayload.imprimirCliente es true, se queda true.
+                // 🚀 Priorizamos el 'true' si viene del botón.
                 imprimirSolicitada: ordenPayload.imprimirSolicitada === true ? true : (ordenPayload.imprimirSolicitada ?? false),
                 imprimirCliente: ordenPayload.imprimirCliente === true ? true : (ordenPayload.imprimirCliente ?? false),
                 
@@ -44,11 +45,10 @@ export function useOrdenes() {
             
             const data = await res.json();
             
-            // ✅ AJUSTE SENIOR: 
-            // Cambiamos mutate(undefined) por un mutate() asíncrono.
-            // Esto evita que las mesas "desaparezcan" de golpe, recuperando la fluidez antigua,
-            // pero forzando a SWR a validar los nuevos datos de Sanity inmediatamente.
+            // ✅ Sincronizamos mesas
             await mutate(); 
+            // 🔥 CERO LAG: Forzamos al inventario a despertar con un timestamp único
+            await mutateGlobal(`/api/inventario/list?t=${Date.now()}`); 
             
             return data;
         } catch (err) {
@@ -59,60 +59,55 @@ export function useOrdenes() {
         }
     };
 
-    // FUNCIÓN PARA ELIMINAR (Tras Cobro o Cancelación)
-   const eliminarOrden = async (ordenId) => {
-    if (!ordenId) return;
-    
-    // 1. Buscamos la orden en el estado local de SWR
-    const ordenAEliminar = ordenes.find(o => o._id === ordenId);
+    // FUNCIÓN PARA ELIMINAR (Mantiene gestión de stock y liberación de mesa)
+    const eliminarOrden = async (ordenId) => {
+        if (!ordenId) return;
+        
+        const ordenAEliminar = ordenes.find(o => o._id === ordenId);
 
-    try {
-        // 🛡️ LÓGICA DE DEVOLUCIÓN MASIVA
-        if (ordenAEliminar && ordenAEliminar.platos) {
-            
-            // Mapeamos los platos al formato que espera la API
-            const platosParaDevolver = ordenAEliminar.platos
-                .filter(p => p.controlaInventario && p.insumoVinculado?._ref)
-                .map(p => ({
-                    insumos: [{ 
-                        _id: p.insumoVinculado._ref, 
-                        // Cantidad que usa el plato (ej: 0.5 o 1)
-                        cantidad: Number(p.cantidadADescontar) || 1 
-                    }],
-                    // Cantidad de platos que había en la mesa (ej: 3 gaseosas)
-                    cantidad: Number(p.cantidad) || 1
-                }));
+        try {
+            // 🛡️ LÓGICA DE DEVOLUCIÓN MASIVA (Tu lógica original intacta)
+            if (ordenAEliminar && ordenAEliminar.platos) {
+                
+                const platosParaDevolver = ordenAEliminar.platos
+                    .filter(p => p.controlaInventario && p.insumoVinculado?._ref)
+                    .map(p => ({
+                        insumos: [{ 
+                            _id: p.insumoVinculado._ref, 
+                            cantidad: Number(p.cantidadADescontar) || 1 
+                        }],
+                        cantidad: Number(p.cantidad) || 1
+                    }));
 
-            // 🚀 Enviamos todo el bloque de una sola vez
-            if (platosParaDevolver.length > 0) {
-                await fetch('/api/inventario/devolver', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        items: platosParaDevolver 
-                    })
-                });
+                if (platosParaDevolver.length > 0) {
+                    await fetch('/api/inventario/devolver', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ items: platosParaDevolver })
+                    });
+                    // 🔥 CERO LAG: Asegura que el stock se vea recuperado AL INSTANTE
+                    await mutateGlobal(`/api/inventario/list?t=${Date.now()}`);
+                }
             }
+
+            // 2. Eliminación física de la orden en Sanity
+            const res = await fetch('/api/ordenes/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ordenId }),
+            });
+            
+            if (!res.ok) throw new Error("Error al eliminar la orden del servidor");
+            
+            // 3. Sincronizamos la UI de mesas
+            await mutate(); 
+            console.log("✅ Mesa borrada y stock recuperado.");
+
+        } catch (error) {
+            console.error("❌ Error en eliminarOrden:", error);
+            alert("Hubo un error al intentar borrar la mesa.");
         }
-
-        // 2. Eliminación física de la orden en Sanity
-        const res = await fetch('/api/ordenes/delete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ordenId }),
-        });
-        
-        if (!res.ok) throw new Error("Error al eliminar la orden del servidor");
-        
-        // 3. Sincronizamos la UI
-        await mutate(); 
-        console.log("✅ Mesa borrada y stock recuperado.");
-
-    } catch (error) {
-        console.error("❌ Error en eliminarOrden:", error);
-        alert("Hubo un error al intentar borrar la mesa.");
-    }
-};
+    };
 
     return {
         ordenes,

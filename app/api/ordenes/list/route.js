@@ -6,7 +6,7 @@ export const revalidate = 0;
 
 /**
  * LISTAR ÓRDENES ACTIVAS
- * Mantenemos la consulta limpia para el panel de mesas.
+ * Consulta original intacta para el panel de mesas.
  */
 export async function GET() {
     try {
@@ -29,14 +29,15 @@ export async function GET() {
 
 /**
  * CREAR O ACTUALIZAR ORDEN
- * Optimizada para evitar duplicados y procesar solo la comanda de cocina.
- * Incluye motor de popularidad inteligente para ranking en el POS.
+ * Versión ultra-optimizada: Sin popularidad para evitar duplicados.
+ * Mantiene lógica de inventario y escudo de seguridad.
  */
 export async function POST(request) {
     try {
         const body = await request.json();
         const { mesa, mesero, platosOrdenados, ordenId } = body;
 
+        // Validación de entrada original
         if (!mesa || !Array.isArray(platosOrdenados) || platosOrdenados.length === 0) {
             return NextResponse.json(
                 { error: 'Datos incompletos para procesar la orden.' },
@@ -44,14 +45,14 @@ export async function POST(request) {
             );
         }
 
-        // 1. Normalización de platos (Lógica de negocio e inventario intacta)
+        // 1. NORMALIZACIÓN (Lógica de Inventario e IDs original PRESERVADA)
         const platosNormalizados = platosOrdenados.map(p => {
             const cantidad = Number(p.cantidad) || 1;
             const precio = Number(p.precioUnitario || p.precioNum) || 0; 
 
             return {
                 _key: p._key || p.lineId || Math.random().toString(36).substring(2, 9), 
-                _id: p._id, // Preservamos el ID para referencia
+                _id: p._id, 
                 nombrePlato: p.nombrePlato || p.nombre, 
                 cantidad,
                 precioUnitario: precio,
@@ -64,43 +65,35 @@ export async function POST(request) {
         });
 
         const fechaActual = new Date().toISOString();
-        
-        // 🚀 LIMPIEZA: Solo mantenemos imprimirSolicitada (Cocina)
         const valorSolicitada = body.imprimirSolicitada === true;
 
-        // 🛡️ ESCUDO ANTI-DUPLICADOS (Blindaje de ID y Mesa)
+        // 2. ESCUDO ANTI-DUPLICADOS (GROQ Original)
         let idDestino = ordenId;
         if (!idDestino) {
-            const mesaPrevia = await sanityClientServer.fetch(
+            idDestino = await sanityClientServer.fetch(
                 `*[_type == "ordenActiva" && mesa == $mesa][0]._id`,
                 { mesa },
                 { useCdn: false }
             );
-            if (mesaPrevia) idDestino = mesaPrevia;
         }
 
-        let responseData;
+        // 3. TRANSACCIÓN ÚNICA (Ahorro de cuota Sanity)
+        let transaction = sanityClientServer.transaction();
 
         if (idDestino) {
-            // ACTUALIZAR (PATCH) - Evita crear mesas fantasmales
-            const updated = await sanityClientServer
-                .patch(idDestino)
-                .set({
+            // Actualizar mesa existente
+            transaction = transaction.patch(idDestino, {
+                set: {
                     mesa,
                     mesero,
                     platosOrdenados: platosNormalizados,
                     ultimaActualizacion: fechaActual,
                     imprimirSolicitada: valorSolicitada,
-                })
-                .commit();
-
-            responseData = {
-                message: 'Orden actualizada',
-                ordenId: updated._id
-            };
+                }
+            });
         } else {
-            // CREAR NUEVA (Solo si la mesa realmente no existe)
-            const nuevaOrden = {
+            // Crear mesa nueva
+            transaction = transaction.create({
                 _type: 'ordenActiva',
                 mesa,
                 mesero,
@@ -108,46 +101,19 @@ export async function POST(request) {
                 ultimaActualizacion: fechaActual,
                 platosOrdenados: platosNormalizados,
                 imprimirSolicitada: valorSolicitada
-            };
-
-            const created = await sanityClientServer.create(nuevaOrden);
-
-            responseData = {
-                message: 'Orden creada',
-                ordenId: created._id
-            };
-        }
-
-        // 🔥 🚀 MOTOR DE POPULARIDAD (Orden Inteligente)
-        // Ejecutamos esto de forma asíncrona al final para NO bloquear el retorno al mesero
-        try {
-            const promesasPopularidad = platosOrdenados.map(p => {
-                const platoId = p._id || p.id || p.platoId;
-
-                // 🛡️ Si no hay ID, saltamos este plato sin romper la ejecución
-                if (!platoId) return Promise.resolve();
-
-                return sanityClientServer
-                    .patch(platoId)
-                    .setIfMissing({ totalVentas: 0 })
-                    .inc({ totalVentas: Number(p.cantidad) || 1 })
-                    .commit()
-                    .catch(e => console.error("Error en patch de popularidad individual:", e.message));
             });
-            
-            // Disparamos las promesas sin 'await' para que el mesero reciba su respuesta YA
-            Promise.allSettled(promesasPopularidad);
-
-        } catch (errPop) {
-            // Error en popularidad no debe afectar el éxito del pedido
-            console.error('❌ [POPULARIDAD_SILENCIOSA]:', errPop.message);
         }
 
-        // Retornamos el éxito de la operación principal (Guardar Mesa)
-        return NextResponse.json(responseData, { status: idDestino ? 200 : 201 });
+        // Ejecución de la transacción
+        const result = await transaction.commit();
+
+        return NextResponse.json({ 
+            message: idDestino ? 'Orden actualizada' : 'Orden creada', 
+            ordenId: idDestino || (result.results[0] ? result.results[0].id : null)
+        }, { status: idDestino ? 200 : 201 });
 
     } catch (error) {
-        console.error('🔥 [API_LIST_POST_ERROR]:', error);
+        console.error('🔥 [API_ORDENES_POST_ERROR]:', error.message);
         return NextResponse.json(
             { error: 'Error en servidor Sanity', details: error.message },
             { status: 500 }
