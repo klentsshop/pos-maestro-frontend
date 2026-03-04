@@ -28,7 +28,17 @@ export async function GET() {
             }
         );
 
-        return NextResponse.json(insumos);
+        // ✅ RESPUESTA CON HEADERS AGRESIVOS ANTI-CACHÉ
+        // Esto obliga al navegador y a los meseros a ver la realidad de Sanity al instante.
+        return new NextResponse(JSON.stringify(insumos), {
+            status: 200,
+            headers: {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+                'Pragma': 'no-cache',
+                'Expires': '0',
+            },
+        });
     } catch (error) {
         console.error("❌ Error listando inventario:", error);
         return NextResponse.json({ error: "Error al obtener inventario" }, { status: 500 });

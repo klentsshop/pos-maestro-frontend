@@ -69,7 +69,9 @@ export default function TicketPanel({
 
     // Buscamos el icono dinámico para el selector de pago
     const iconoPagoActual = METODOS_PAGO.find(m => m.value === metodoPago)?.title.split(' ')[0] || '💰';
-
+    // ... justo antes del return del TicketPanel
+     const [pagaCon, setPagaCon] = useState('');
+     const cambio = pagaCon && Number(pagaCon) > 0 ? (Number(pagaCon) - total) : 0;
     return (
         <div 
             className={`${styles.ticketPanel} ${mostrarCarritoMobile ? styles.ticketPanelShowMobile : ''}`}
@@ -379,10 +381,65 @@ export default function TicketPanel({
                         </div>
                     )}
                 </div>
+                {/* 💰 SECCIÓN TOTAL Y CALCULADORA COMPACTA (OPTIMIZADA) */}
+                <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    padding: '6px 0', 
+                    borderTop: '1px solid #eee',
+                    marginBottom: '6px'
+                }}>
+                    {/* IZQUIERDA: Calculadora compacta con input más ancho */}
+                    {esModoCajero ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontSize: '0.65rem', fontWeight: '900', color: '#9CA3AF', marginBottom: '2px' }}>PAGA CON:</span>
+                                <div style={{ position: 'relative' }}>
+                                    <span style={{ position: 'absolute', left: '6px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.75rem', fontWeight: 'bold', color: '#6B7280' }}>$</span>
+                                    <input 
+                                        type="number"
+                                        placeholder="0"
+                                        value={pagaCon}
+                                        onChange={(e) => setPagaCon(e.target.value)}
+                                        style={{ 
+                                            width: '110px', 
+                                            padding: '4px 6px 4px 16px', 
+                                            borderRadius: '6px', 
+                                            border: '1px solid #D1D5DB', 
+                                            fontSize: '0.9rem', 
+                                            fontWeight: '900',
+                                            outline: 'none',
+                                            backgroundColor: '#F9FAFB'
+                                        }}
+                                    />
+                                </div>
+                            </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.3rem', fontWeight: '900', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '0.85rem', color: SITE_CONFIG.theme.textDark }}>TOTAL</span>
-                    <span>{SITE_CONFIG.brand.symbol}{total.toLocaleString(SITE_CONFIG.brand.currency)}</span>
+                            {pagaCon && (
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <span style={{ fontSize: '0.65rem', fontWeight: '900', color: '#9CA3AF', marginBottom: '2px' }}>CAMBIO:</span>
+                                    <span style={{ 
+                                        fontSize: '0.95rem', 
+                                        fontWeight: '950', 
+                                        color: cambio < 0 ? '#EF4444' : '#059669' 
+                                    }}>
+                                        {SITE_CONFIG.brand.symbol}{cambio.toLocaleString(SITE_CONFIG.brand.currency)}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div style={{ flex: 1 }}></div> 
+                    )}
+
+                    {/* DERECHA: Total alineado independientemente */}
+                    <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: '800', color: SITE_CONFIG.theme.textDark, lineHeight: '1' }}>TOTAL</span>
+                        <span style={{ fontSize: '1.45rem', fontWeight: '950', color: '#000', lineHeight: '1.1', marginTop: '2px' }}>
+                            {SITE_CONFIG.brand.symbol}{total.toLocaleString(SITE_CONFIG.brand.currency)}
+                        </span>
+                    </div>
                 </div>
 
                 <div style={{ display: 'flex', gap: '4px', width: '100%', alignItems: 'center' }}>
@@ -463,27 +520,29 @@ export default function TicketPanel({
     >
         {ordenActivaId ? 'ACTUALIZAR' : 'GUARDAR'}
     </button>
-
     {/* 4. BOTÓN COBRAR: Solo si es cajero y la orden ya está guardada */}
-    {esModoCajero && cart.length > 0 && (
-        <button 
-            onClick={cobrarOrden} 
-            style={{ 
-                flex: '1', 
-                padding: '12px 2px', 
-                backgroundColor: SITE_CONFIG.theme.primary, 
-                color: 'white', 
-                border: 'none', 
-                borderRadius: '6px', 
-                fontWeight: '900', 
-                fontSize: '0.75rem', 
-                cursor: 'pointer',
-                minWidth: '0'
-            }}
-        >
-            COBRAR
-        </button>
-    )}
+{esModoCajero && cart.length > 0 && (
+    <button 
+        onClick={() => {
+            cobrarOrden(); // 1. Ejecuta el proceso de cobro
+            setPagaCon(''); // 2. Limpia la calculadora de cambio
+        }} 
+        style={{ 
+            flex: '1', 
+            padding: '12px 2px', 
+            backgroundColor: SITE_CONFIG.theme.primary, 
+            color: 'white', 
+            border: 'none', 
+            borderRadius: '6px', 
+            fontWeight: '900', 
+            fontSize: '0.75rem', 
+            cursor: 'pointer',
+            minWidth: '0'
+        }}
+    >
+        COBRAR
+    </button>
+)}
 </div>
             </div>
         </div>

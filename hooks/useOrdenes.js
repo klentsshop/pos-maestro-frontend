@@ -7,31 +7,25 @@ const fetcher = (url) => fetch(url).then((res) => {
 });
 
 export function useOrdenes() {
-    // ✅ Sincronización Profesional: 7 segundos para ahorro base.
+    // ✅ Sincronización Profesional: Ahorro real sin sacrificar fluidez.
     const { data: ordenes = [], mutate, error } = useSWR('/api/ordenes/list', fetcher, {
         refreshInterval: 7000, 
         revalidateOnFocus: true,
         revalidateOnReconnect: true,
-        dedupingInterval: 2000,
-        focusThrottleInterval: 2000 
+        dedupingInterval: 2000 // Protege el listado de órdenes
     });
 
     const [cargandoAccion, setCargandoAccion] = useState(false);
 
-    // FUNCIÓN PARA GUARDAR O ACTUALIZAR (Lógica original 100% preservada)
     const guardarOrden = async (ordenPayload) => {
         setCargandoAccion(true);
         try {
-            // 📝 REVISIÓN LÍNEA POR LÍNEA:
             const payload = {
                 ...ordenPayload,
                 estado: ordenPayload.estado || 'abierta',
                 metodoPago: ordenPayload.metodoPago || 'efectivo',
-                
-                // 🚀 Priorizamos el 'true' si viene del botón.
                 imprimirSolicitada: ordenPayload.imprimirSolicitada === true ? true : (ordenPayload.imprimirSolicitada ?? false),
                 imprimirCliente: ordenPayload.imprimirCliente === true ? true : (ordenPayload.imprimirCliente ?? false),
-                
                 ultimaActualizacion: new Date().toISOString()
             };
 
@@ -47,8 +41,12 @@ export function useOrdenes() {
             
             // ✅ Sincronizamos mesas
             await mutate(); 
-            // 🔥 CERO LAG: Forzamos al inventario a despertar con un timestamp único
-            await mutateGlobal(`/api/inventario/list?t=${Date.now()}`); 
+
+            // ⏱️ RETRASO TÁCTICO: Esperamos a que Sanity procese el descuento
+            await new Promise(resolve => setTimeout(resolve, 800));
+
+            // 🔥 CERO LAG: Notificamos al inventario tras el respiro
+            await mutateGlobal('/api/inventario/list'); 
             
             return data;
         } catch (err) {
@@ -59,16 +57,12 @@ export function useOrdenes() {
         }
     };
 
-    // FUNCIÓN PARA ELIMINAR (Mantiene gestión de stock y liberación de mesa)
     const eliminarOrden = async (ordenId) => {
         if (!ordenId) return;
-        
         const ordenAEliminar = ordenes.find(o => o._id === ordenId);
 
         try {
-            // 🛡️ LÓGICA DE DEVOLUCIÓN MASIVA (Tu lógica original intacta)
             if (ordenAEliminar && ordenAEliminar.platos) {
-                
                 const platosParaDevolver = ordenAEliminar.platos
                     .filter(p => p.controlaInventario && p.insumoVinculado?._ref)
                     .map(p => ({
@@ -85,36 +79,30 @@ export function useOrdenes() {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ items: platosParaDevolver })
                     });
-                    // 🔥 CERO LAG: Asegura que el stock se vea recuperado AL INSTANTE
-                    await mutateGlobal(`/api/inventario/list?t=${Date.now()}`);
                 }
             }
 
-            // 2. Eliminación física de la orden en Sanity
             const res = await fetch('/api/ordenes/delete', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ordenId }),
             });
             
-            if (!res.ok) throw new Error("Error al eliminar la orden del servidor");
+            if (!res.ok) throw new Error("Error al eliminar la orden");
             
-            // 3. Sincronizamos la UI de mesas
+            // Sincronizamos UI de mesas
             await mutate(); 
-            console.log("✅ Mesa borrada y stock recuperado.");
+
+            // ⏱️ RETRASO TÁCTICO: Esperamos a que Sanity procese la devolución
+            await new Promise(resolve => setTimeout(resolve, 800));
+
+            // ✅ Notificación inmediata de stock recuperado tras el respiro
+            await mutateGlobal('/api/inventario/list');
 
         } catch (error) {
-            console.error("❌ Error en eliminarOrden:", error);
-            alert("Hubo un error al intentar borrar la mesa.");
+            console.error("❌ Error:", error);
         }
     };
 
-    return {
-        ordenes,
-        guardarOrden,
-        eliminarOrden,
-        refresh: mutate, 
-        cargandoAccion,
-        errorConexion: error
-    };
+    return { ordenes, guardarOrden, eliminarOrden, refresh: mutate, cargandoAccion, errorConexion: error };
 }
